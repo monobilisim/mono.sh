@@ -1,0 +1,15 @@
+postgres:
+  limits:
+    process: 50
+    query: 25
+    conn_percent: 70
+  alarm:
+    enabled: true
+
+mysql:
+  process_limit: 50
+  cluster: 
+    enabled: false
+    size: 3
+  alarm:
+    enabled: true

@@ -1,0 +1,9 @@
+#ignored_services:
+#  - asterniclog 
+
+restart:
+  auto: true
+  attempt_interval: 15 # in minutes
+
+concurrent_calls: 30
+trunk_check_interval: 3
