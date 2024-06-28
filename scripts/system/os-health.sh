@@ -419,6 +419,8 @@ validate() {
 
 #~ main
 main() {
+    pid_file=$(create_pid)
+
     if [ "$1" == "--debug" ] || [ "$1" == "-d" ]; then
         set -x
         shift
@@ -482,3 +484,5 @@ main() {
 }
 
 main "$@"
+
+rm ${pid_file}
