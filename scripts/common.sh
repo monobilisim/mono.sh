@@ -11,6 +11,24 @@ GREEN_FG=$(tput setaf 2)
 BLUE_FG=$(tput setaf 4)
 RESET=$(tput sgr0)
 
+function cron_mode() {
+    if [[ "$1" == "1" ]]; then
+        export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    
+        RED_FG=""
+        GREEN_FG=""
+        YELLOW_FG=""
+        BLUE_FG=""
+        RESET=""
+    
+        #~ log file prefix
+        echo "=== ( $(date) - $HOSTNAME ) =========================================" >$TMP_PATH/$SCRIPT_NAME.log
+    
+        #~ redirect all outputs to file
+        exec &>>$TMP_PATH/$SCRIPT_NAME.log
+    fi
+}
+
 function yaml() {
 
     if [[ -f "$CONFIG_PATH"/$2.yaml ]]; then
