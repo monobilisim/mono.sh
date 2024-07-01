@@ -16,10 +16,15 @@ jobs:
         shell: bash
         run: |
           cp $PWD/.github/templates/README.md $PWD/
-          for a in $(find . -maxdepth 1 -type d -not -path '*/\.*' \( ! -iname ".*" \) | grep -v config | sort); do
+          for a in $(find . -maxdepth 1 -type d -not -path '*/\.*' \( ! -iname ".*" \) | sort); do
              directory="$(basename $a)"
              [[ ! -e $a/.dirinfo ]] && { DIRNAME="ERROR"; DIRINFO="$a/.dirinfo not defined..."; } || { DIRNAME="$(cat $a/.dirinfo | grep 'name:' | cut -d ' ' -f2- )"; DIRINFO="$(cat $a/.dirinfo | grep 'description:' | cut -d ' ' -f2-)"; }
              echo -e "| [${DIRNAME}](https://github.com/monobilisim/mono.sh/tree/main/$(basename $a)) | ${DIRINFO} |" >> README.md
+             
+             if echo "$directory" | grep config; then
+                continue
+             fi
+
              pushd $a
              [[ -e "README.md" ]] && rm README.md
              echo -e "| Script | Description |\n|--|--|" > README.md
