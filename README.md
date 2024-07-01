@@ -21,5 +21,5 @@ There are scripts that provide more than one convenience in this collection
 ## Tree of the Repository Content
 | Folder | Description |
 |--|--|
-| [ERROR](https://github.com/monobilisim/mono.sh/tree/main/configs) | ./configs/.dirinfo not defined... |
-| [ERROR](https://github.com/monobilisim/mono.sh/tree/main/scripts) | ./scripts/.dirinfo not defined... |
+| [Configs](https://github.com/monobilisim/mono.sh/tree/main/configs) | Configuration files for scripts |
+| [Scripts](https://github.com/monobilisim/mono.sh/tree/main/scripts) | All scripts |
