@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 ###~ description: This script is used to check the health of the server
+
 #~ variables
+#shellcheck disable=SC2034
 script_version="v5.0.0"
 SCRIPT_NAME=os-health
 SCRIPT_NAME_PRETTY="OS Health"
 
 # https://stackoverflow.com/questions/4774054/reliable-way-for-a-bash-script-to-get-the-full-path-to-itself
-SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit ; pwd -P )"
 
+#shellcheck disable=SC1091
 . "$SCRIPTPATH"/../common.sh
 
 create_tmp_dir
@@ -22,7 +25,6 @@ parse_monocloud() {
     
     SYSTEM_LOAD_AND_RAM=$(yaml .system_load_and_ram "$CONFIG_PATH_MONOCLOUD" 1)
     
-    DYNAMIC_LIMIT_INTERVAL=$(yaml .dynamic_limit_interval "$CONFIG_PATH_MONOCLOUD" 0)
     LOAD_LIMIT_MULTIPLIER=$(yaml .load.limit_multiplier "$CONFIG_PATH_MONOCLOUD" 0.8)
     
     PART_USE_LIMIT=$(yaml .part_use_limit "$CONFIG_PATH_MONOCLOUD")
@@ -34,99 +36,76 @@ parse_monocloud() {
 
 grep_custom() {
     if command -v pcregrep &>/dev/null; then
-        pcregrep $@
+        pcregrep "$@"
     else
-        grep -P $@
+        grep -P "$@"
     fi
 }
 
 #~ check partitions
 check_partitions() {
-    local partitions="$(df -l -T | awk '{print $1,$2,$7}' | sed '1d' | sort | uniq | grep -E $(echo ${FILESYSTEMS[@]} | sed 's/ /|/g') | awk '$2 != "zfs" {print} $2 == "zfs" && $1 !~ /\//')"
+    local partitions
+    partitions=$(df -l -T | awk '{print $1,$2,$7}' | sed '1d' | sort | uniq | grep -E "${FILESYSTEMS[*]// /|}" | awk '$2 != "zfs" {print} $2 == "zfs" && $1 !~ /\//')
+
     oldIFS=$IFS
-    local json="["
+    json="["
+    local json
     IFS=$'\n'
     for partition in $partitions; do
-        IFS=$oldIFS info=($partition)
-        local partition="${info[0]}"
-        local filesystem="${info[1]}"
-        local mountpoint="${info[2]}"
-        if [[ "${FILESYSTEMS[@]}" =~ "$filesystem" ]]; then
-            case $filesystem in
-            "fuse.zfs")
-                note="Fuse ZFS is not supported yet."
-                usage="0"
-                avail="0"
-                total="0"
-                percentage="0"
-                ;;
-            "zfs")
-                usage=$(zfs list -H -p -o used "$partition")
-                avail=$(zfs list -H -p -o avail "$partition")
-                total=$((usage + avail))
-                percentage=$((usage * 100 / total))
-                ;;
-            "btrfs")
-                usage=$(btrfs fi us -b $mountpoint | grep_custom '^\s.+Used' | awk '{print $2}')
-                total=$(btrfs fi us -b $mountpoint | grep_custom 'Device size' | awk '{print $3}')
-                percentage=$(echo "scale=2; $usage / $total * 100" | bc)
-                ;;
-            *)
-                stat=($(df -P $mountpoint | sed '1d' | awk '{printf "%s %-12s   %s\n", $3*1024, $2*1024, $5}'))
-                usage=${stat[0]}
-                total=${stat[1]}
-                percentage=${stat[2]}
-                ;;
-            esac
-        fi
-        [[ "$usage" != "0" ]] && usage=$(convertToProper $usage)
-        [[ "$total" != "0" ]] && total=$(convertToProper $total)
+        IFS=$oldIFS info=("$partition")
+        partition="${info[0]}"
+        filesystem="${info[1]}"
+        mountpoint="${info[2]}"
+        local partition
+        local filesystem
+        local mountpoint
+        for confilesystem in "${FILESYSTEMS[@]}"; do
+            if [[ "$confilesystem" =~ $filesystem ]]; then
+                case $filesystem in
+                    "fuse.zfs")
+                        note="Fuse ZFS is not supported yet."
+                        usage="0"
+                        avail="0"
+                        total="0"
+                        percentage="0"
+                        ;;
+                    "zfs")
+                        usage=$(zfs list -H -p -o used "$partition")
+                        avail=$(zfs list -H -p -o avail "$partition")
+                        total=$((usage + avail))
+                        percentage=$((usage * 100 / total))
+                        ;;
+                    "btrfs")
+                        usage=$(btrfs filesystem us -b "$mountpoint" | grep_custom '^\s.+Used' | awk '{print $2}')
+                        total=$(btrfs filesystem us -b "$mountpoint" | grep_custom 'Device size' | awk '{print $3}')
+                        percentage=$(echo "scale=2; $usage / $total * 100" | bc)
+                        ;;
+                    *)
+                        readarray -t stat < <(df -P "$mountpoint" | sed '1d' | awk '{printf "%s %-12s  %s\n", $3*1024, $2*1024, $5}')
+                        usage=${stat[0]}
+                        total=${stat[1]}
+                        percentage=${stat[2]}
+                        ;;
+                esac
+            fi
+        done
+        [[ "$usage" != "0" ]] && usage=$(convertToProper "$usage")
+        [[ "$total" != "0" ]] && total=$(convertToProper "$total")
         json+="{\"partition\":\"$partition\",\"filesystem\":\"$filesystem\",\"mountpoint\":\"$mountpoint\",\"percentage\":\"${percentage//%/}\",\"usage\":\"$usage\",\"total\":\"$total\", \"note\":\"${note:-OK}\"},"
     done
     json=${json/%,/}
     json+="]"
     IFS=$oldifs
-    echo $json
+    echo "$json"
 }
 
 function sum_array() {
-    local sum=0
-    for num in $@; do
+    sum=0
+    local sum
+    for num in "$@"; do
         sum=$(echo "$sum + $num" | bc)
     done
-    echo $sum
-}
-
-function dynamic_limit() {
-    [[ "$DYNAMIC_LIMIT_INTERVAL" -lt 1 ]] && return
-
-    [ -d "/tmp/monocloud-health/checks" ] || return
-    cd /tmp/monocloud-health/checks
-
-    LOAD_LIMIT_ARRAY=()
-    RAM_LIMIT_ARRAY=()
-
-    if [ -f "/tmp/monocloud-health/checks/last_ram_limit_dynamic" ]; then
-        export RAM_LIMIT_DYNAMIC="$(cat /tmp/monocloud-health/checks/last_ram_limit_dynamic)"
-    fi
-
-    if [[ $(ls -1 *.json | wc -l) -ge $DYNAMIC_LIMIT_INTERVAL ]]; then
-        for file in *.json; do
-            LOAD_LIMIT_ARRAY+=($(jq -r '.load' $file))
-            RAM_LIMIT_ARRAY+=($(jq -r '.ram' $file))
-        done
-
-        # Get the average of the array
-        export RAM_LIMIT_DYNAMIC=$(echo "scale=2; ($(sum_array ${RAM_LIMIT_ARRAY[@]}) / ${#RAM_LIMIT_ARRAY[@]})" | bc)
-
-        rm -f /tmp/monocloud-health/checks/*
-
-        echo "$RAM_LIMIT_DYNAMIC" >/tmp/monocloud-health/checks/last_ram_limit_dynamic
-    fi
-
-    [ -z "$RAM_LIMIT_DYNAMIC" ] && export RAM_LIMIT_DYNAMIC=$RAM_LIMIT
-
-    cd - &>/dev/null
+    echo "$sum"
 }
 
 #~ check status
@@ -136,11 +115,11 @@ check_status() {
     printf "\n"
 
     echo_status "Disk Usages"
-    info="$(check_partitions | jq -r '.[] | [.percentage, .usage, .total, .partition, .mountpoint, .note] | @tsv')"
+    readarray -t info < <(check_partitions | jq -r '.[] | [.percentage, .usage, .total, .partition, .mountpoint, .note] | @tsv')
     oldIFS=$IFS
     IFS=$'\n'
-    for i in ${info[@]}; do
-        IFS=$oldIFS a=($i)
+    for i in "${info[@]}"; do
+        IFS=$oldIFS a=("$i")
         if [[ ${a[0]} -gt $PART_USE_LIMIT ]]; then
             print_colour "Disk Usage is ${a[3]}" "greater than $PART_USE_LIMIT (${a[0]}%)" "error"
         else
@@ -154,16 +133,16 @@ check_status() {
         echo_status "System Load and RAM"
         systemstatus="$(check_system_load_and_ram)"
 
-        if [[ -n $(echo $systemstatus | jq -r ". | select(.load | tonumber > $LOAD_LIMIT_CPU)") ]]; then
-            print_colour "System Load" "greater than $LOAD_LIMIT_CPU ($(echo $systemstatus | jq -r '.load'))" "error"
+        if [[ -n $(echo "$systemstatus" | jq -r ". | select(.load | tonumber > $LOAD_LIMIT_CPU)") ]]; then
+            print_colour "System Load" "greater than $LOAD_LIMIT_CPU ($(echo "$systemstatus" | jq -r '.load'))" "error"
         else
-            print_colour "System Load" "less than $LOAD_LIMIT_CPU ($(echo $systemstatus | jq -r '.load'))"
+            print_colour "System Load" "less than $LOAD_LIMIT_CPU ($(echo "$systemstatus" | jq -r '.load'))"
         fi
 
-        if [[ -n $(echo $systemstatus | jq -r ". | select(.ram | tonumber > ${RAM_LIMIT_DYNAMIC:-$RAM_LIMIT})") ]]; then
-            print_colour "RAM Usage" "greater than ${RAM_LIMIT_DYNAMIC:-$RAM_LIMIT} ($(echo $systemstatus | jq -r '.ram'))" "error"
+        if [[ -n $(echo "$systemstatus" | jq -r ". | select(.ram | tonumber > $RAM_LIMIT)") ]]; then
+            print_colour "RAM Usage" "greater than $RAM_LIMIT ($(echo "$systemstatus" | jq -r '.ram'))" "error"
         else
-            print_colour "RAM Usage" "less than ${RAM_LIMIT_DYNAMIC:-$RAM_LIMIT} ($(echo $systemstatus | jq -r '.ram'))"
+            print_colour "RAM Usage" "less than $RAM_LIMIT ($(echo "$systemstatus" | jq -r '.ram'))"
         fi
     fi
 
@@ -174,18 +153,20 @@ check_status() {
 
 freebsd_mib() {
     if [[ "$1" == "vmstat" ]]; then
-        local bytes="$(echo "$(vmstat_jq "$2") * 1024" | bc)"
+        bytes="$(echo "$(vmstat_jq "$2") * 1024" | bc)"
     else
-        local bytes="$(sysctl -n $1)"
+        bytes="$(sysctl -n "$1")"
     fi
-    local mib=$(echo "($bytes + 524288) / 1048576" | bc) # Round to the nearest MiB
+    local bytes
+    mib=$(echo "($bytes + 524288) / 1048576" | bc) # Round to the nearest MiB
+    local mib
     echo "$mib"
 }
 
 free_custom() {
 
     if command -v free &>/dev/null; then
-        free -m "$@"
+        free -m
         return $?
     fi
 
@@ -201,6 +182,8 @@ check_system_load_and_ram() {
     [[ -z "$(command -v systemctl)" ]] && is_old=1 || is_old=0
     [[ -z "$(command -v pkg)" ]] && average="average:" || average="averages:" # its 'averages:' instead of 'average:' on freebsd
     load=$(uptime | awk -F"$average" '{print $2}' | awk -F',' '{print $1}' | xargs)
+    
+    #shellcheck disable=SC2119
     [[ $is_old == 0 ]] && ram_usage=$(free_custom | awk '/Mem/{printf("%.2f", $3/$2*100)}') || ram_usage=$(free_custom | awk '/Mem/{printf("%.2f", ($3-$6-$7)/$2*100)}')
     local json="{\"load\":\"$load\",\"ram\":\"$ram_usage\"}"
 
@@ -218,18 +201,18 @@ check_system_load_and_ram() {
         ram_u=$(echo "$ram_usage" | awk -F ',' '{print $1}')
     fi
 
-    if [[ $(echo "$ram_usage <= ${RAM_LIMIT_DYNAMIC:-$RAM_LIMIT}" | bc -l) -eq 1 ]]; then
-        message="RAM usage limit went below ${RAM_LIMIT_DYNAMIC:-$RAM_LIMIT} (Current: $ram_usage%)"
+    if [[ $(echo "$ram_usage <= $RAM_LIMIT" | bc -l) -eq 1 ]]; then
+        message="RAM usage limit went below $RAM_LIMIT (Current: $ram_usage%)"
         alarm_check_up "ram" "$message" "system"
     else
-        message="RAM usage limit has exceeded ${RAM_LIMIT_DYNAMIC:-$RAM_LIMIT} (Current: $ram_usage%)"
+        message="RAM usage limit has exceeded $RAM_LIMIT (Current: $ram_usage%)"
         alarm_check_down "ram" "$message" "system"
     fi
 
-    [ ! -d "/tmp/monocloud-health/checks" ] && mkdir -p /tmp/monocloud-health/checks
-    echo $json >/tmp/monocloud-health/checks/$(date +%s).json
+    [ ! -d "$TMP_PATH_SCRIPT/checks" ] && mkdir -p "$TMP_PATH_SCRIPT"/checks
+    echo "$json" >"$TMP_PATH_SCRIPT"/checks/"$(date +%s)".json
 
-    echo $json
+    echo "$json"
 }
 
 #~ convert to proper
@@ -265,31 +248,47 @@ convertToProper() {
             dummy=$((dummy / 1024))
         fi
     done
-    echo $result
+    echo "$result"
 }
 
 report_status() {
-    local diskstatus="$(check_partitions)"
-    echo $diskstatus
-    [[ "${SYSTEM_LOAD_AND_RAM:-1}" -eq 1 ]] && local systemstatus="$(check_system_load_and_ram)"
-    [[ -n "$IDENTIFIER" ]] && alarm_hostname=$IDENTIFIER || alarm_hostname="$(hostname)"
+    diskstatus="$(check_partitions)"
+    local diskstatus
+    echo "$diskstatus"
+    
+    if [[ "${SYSTEM_LOAD_AND_RAM:-1}" -eq 1 ]]; then 
+        systemstatus="$(check_system_load_and_ram)"
+        local systemstatus
+    fi
 
-    local underthreshold_disk=0
-    local REDMINE_CLOSE=1
-    local REDMINE_SEND_UPDATE=0
+    if [[ -n "$IDENTIFIER" ]]; then
+        alarm_hostname="$IDENTIFIER"
+        alarm_hostname="$(hostname)"
+    fi
+
+    underthreshold_disk=0
+    REDMINE_CLOSE=1
+    REDMINE_SEND_UPDATE=0
+    
+    local underthreshold_disk
+    local REDMINE_CLOSE
+    local REDMINE_SEND_UPDATE
+
     message="Partition usage levels went below ${PART_USE_LIMIT}% for the following partitions;\n\`\`\`\n"
     table_md="$(printf '|%s |%s |%s |%s |%s |' '%' 'Used' 'Total' 'Partition' 'Mount Point')"
     table="$(printf '%-5s | %-10s | %-10s | %-50s | %s' '%' 'Used' 'Total' 'Partition' 'Mount Point')"
     table_md+="\n"
     table_md+="|--|--|--|--|--|"
     table+='\n'
-    local diskcount="$(echo $diskstatus | jq -r '.[].partition' | wc -l)"
+    diskcount="$(echo "$diskstatus" | jq -r '.[].partition' | wc -l)"
+    local diskcount
     for z in $(seq 1 110); do table+="$(printf '-')"; done
-    if [[ -n "$(echo $diskstatus | jq -r ".[] | select(.percentage | tonumber < $PART_USE_LIMIT)")" ]]; then
-        local oldifs=$IFS
+    if [[ -n "$(echo "$diskstatus" | jq -r ".[] | select(.percentage | tonumber < $PART_USE_LIMIT)")" ]]; then
+        oldifs=$IFS
+        local oldifs
         IFS=$'\n'
-        for info in $(echo $diskstatus | jq -r ".[] | select(.percentage | tonumber < $PART_USE_LIMIT) | [.percentage, .usage, .total, .partition, .mountpoint] | @tsv"); do
-            IFS=$oldifs a=($info)
+        for info in $(echo "$diskstatus" | jq -r ".[] | select(.percentage | tonumber < $PART_USE_LIMIT) | [.percentage, .usage, .total, .partition, .mountpoint] | @tsv"); do
+            IFS=$oldifs read -ra a <<< "$info"
             percentage=${a[0]}
             usage=${a[1]}
             total=${a[2]}
@@ -298,23 +297,26 @@ report_status() {
 
             [[ "$mountpoint" == "/" ]] && mountpoint="/sys_root"
 
-            if [[ -f "/tmp/monocloud-health/${mountpoint//\//_}-redmine" ]]; then
-                curl -fsSL -X PUT -H "Content-Type: application/json" -H "X-Redmine-API-Key: $REDMINE_API_KEY" -d "{\"issue\": { \"id\": $(cat /tmp/monocloud-health/redmine_issue_id), \"notes\": \"${partition}, %$PART_USE_LIMIT altına geri indi.\"}}" "$REDMINE_URL"/issues/$(cat /tmp/monocloud-health/redmine_issue_id).json 
-                rm -f "/tmp/monocloud-health/${mountpoint//\//_}-redmine"
+            if [[ -f "$TMP_PATH_SCRIPT/${mountpoint//\//_}-redmine" ]]; then
+                curl -fsSL -X PUT -H "Content-Type: application/json" -H "X-Redmine-API-Key: $REDMINE_API_KEY" -d "{\"issue\": { \"id\": $(cat "$TMP_PATH_SCRIPT"/redmine_issue_id), \"notes\": \"${partition}, %$PART_USE_LIMIT altına geri indi.\"}}" "$REDMINE_URL"/issues/"$(cat "$TMP_PATH_SCRIPT"/redmine_issue_id)".json 
+                rm -f "$TMP_PATH_SCRIPT/${mountpoint//\//_}-redmine"
             fi
             
-            [[ -f "/tmp/monocloud-health/${mountpoint//\//_}" ]] && {
-                table_md+="\n$(printf '| %s | %s | %s | %s | %s |\n' $percentage% $usage $total $partition ${mountpoint//sys_root/})"
-                table+="\n$(printf '%-5s | %-10s | %-10s | %-50s | %-35s' $percentage% $usage $total $partition ${mountpoint//sys_root/})"
+            [[ -f "$TMP_PATH_SCRIPT/${mountpoint//\//_}" ]] && {
+                table_md+="\n$(printf '| %s | %s | %s | %s | %s |\n' "$percentage"% "$usage" "$total" "$partition" "${mountpoint//sys_root/}")"
+                table+="\n$(printf '%-5s | %-10s | %-10s | %-50s | %-35s' "$percentage"% "$usage" "$total" "$partition" "${mountpoint//sys_root/}")"
                 underthreshold_disk=$((underthreshold_disk + 1))
-                rm -f /tmp/monocloud-health/${mountpoint//\//_}
+                rm -f "$TMP_PATH_SCRIPT"/"${mountpoint//\//_}"
             }
         done
         message+="$table\n\`\`\`"
 
-        if [[ "$underthreshold_disk" == "$diskcount" && "${REDMINE_ENABLE:-1}" == "1" && -f "/tmp/monocloud-health/redmine_issue_id" ]]; then
-            curl -fsSL -X PUT -H "Content-Type: application/json" -H "X-Redmine-API-Key: $REDMINE_API_KEY" -d "{\"issue\": { \"id\": $(cat /tmp/monocloud-health/redmine_issue_id), \"notes\": \"Disk kullanım oranları, %$PART_USE_LIMIT altına geri indiği için iş kapatılıyor\", \"status_id\": \"${REDMINE_STATUS_ID_CLOSED:-5}\", \"assigned_to_id\": \"me\" }}" "$REDMINE_URL"/issues/$(cat /tmp/monocloud-health/redmine_issue_id).json
-            rm -f /tmp/monocloud-health/redmine_issue_id
+        if [[ "$underthreshold_disk" == "$diskcount" && "${REDMINE_ENABLE:-1}" == "1" && -f "$TMP_PATH_SCRIPT/redmine_issue_id" ]]; then
+            curl -fsSL -X PUT -H "Content-Type: application/json" -H "X-Redmine-API-Key: $REDMINE_API_KEY" \
+-d "{\"issue\": { \"id\": $(cat "$TMP_PATH_SCRIPT"/redmine_issue_id), \"notes\": \"Disk kullanım oranları, %$PART_USE_LIMIT altına geri indiği için iş kapatılıyor\", \"status_id\": \"${REDMINE_STATUS_ID_CLOSED:-5}\", \"assigned_to_id\": \"me\" }}" \
+"$REDMINE_URL"/issues/"$(cat "$TMP_PATH_SCRIPT"/redmine_issue_id)".json
+
+            rm -f "$TMP_PATH_SCRIPT"/redmine_issue_id
         fi
 
         IFS=$oldifs
@@ -331,11 +333,11 @@ report_status() {
     table_md+="|--|--|--|--|--|"
     table="$(printf '%-5s | %-10s | %-10s | %-50s | %s' '%' 'Used' 'Total' 'Partition' 'Mount Point')\n"
     for z in $(seq 1 110); do table+="$(printf '-')"; done
-    if [[ -n "$(echo $diskstatus | jq -r ".[] | select(.percentage | tonumber > $PART_USE_LIMIT)")" ]]; then
+    if [[ -n "$(echo "$diskstatus" | jq -r ".[] | select(.percentage | tonumber > $PART_USE_LIMIT)")" ]]; then
         local oldifs=$IFS
         IFS=$'\n'
-        for info in $(echo $diskstatus | jq -r ".[] | select(.percentage | tonumber > $PART_USE_LIMIT) | [.percentage, .usage, .total, .partition, .mountpoint] | @tsv"); do
-            IFS=$oldifs a=($info)
+        for info in $(echo "$diskstatus" | jq -r ".[] | select(.percentage | tonumber > $PART_USE_LIMIT) | [.percentage, .usage, .total, .partition, .mountpoint] | @tsv"); do
+            IFS=$oldifs read -ra a <<< "$info"
             percentage=${a[0]}
             usage=${a[1]}
             total=${a[2]}
@@ -344,44 +346,46 @@ report_status() {
 
             [[ "$mountpoint" == "/" ]] && mountpoint="/sys_root"
 
-            if [[ -f "/tmp/monocloud-health/${mountpoint//\//_}-redmine" && "$(cat /tmp/monocloud-health/${mountpoint//\//_}-redmine)" != "$percentage" ]]; then
+            if [[ -f "$TMP_PATH_SCRIPT/${mountpoint//\//_}-redmine" && "$(cat /tmp/monocloud-health/"${mountpoint//\//_}"-redmine)" != "$percentage" ]]; then
                 REDMINE_SEND_UPDATE=1
             fi
 
-            echo "$percentage" >/tmp/monocloud-health/${mountpoint//\//_}-redmine
+            echo "$percentage" >"$TMP_PATH_SCRIPT"/"${mountpoint//\//_}"-redmine
 
-            if [[ -f "/tmp/monocloud-health/${mountpoint//\//_}" ]]; then
-                if [[ "$(cat /tmp/monocloud-health/${mountpoint//\//_})" == "$(date +%Y-%m-%d)" ]]; then
+            if [[ -f "$TMP_PATH_SCRIPT/${mountpoint//\//_}" ]]; then
+                if [[ "$(cat "$TMP_PATH_SCRIPT"/"${mountpoint//\//_}")" == "$(date +%Y-%m-%d)" ]]; then
                     overthreshold_disk=0
                     continue
                 else
-                    date +%Y-%m-%d >/tmp/monocloud-health/${mountpoint//\//_}
+                    date +%Y-%m-%d >"$TMP_PATH_SCRIPT"/"${mountpoint//\//_}"
                     overthreshold_disk=1
                 fi
             else
-                date +%Y-%m-%d >/tmp/monocloud-health/${mountpoint//\//_}
+                date +%Y-%m-%d >"$TMP_PATH_SCRIPT"/"${mountpoint//\//_}"
                 overthreshold_disk=1
             fi
 
-            table_md+="\n$(printf '| %s | %s | %s | %s | %s |' $percentage% $usage $total $partition ${mountpoint//sys_root/})"
-            table+="\n$(printf '%-5s | %-10s | %-10s | %-50s | %-35s' $percentage% $usage $total $partition ${mountpoint//sys_root/})"
+            table_md+="\n$(printf '| %s | %s | %s | %s | %s |' "$percentage"% "$usage" "$total" "$partition" "${mountpoint//sys_root/}")"
+            table+="\n$(printf '%-5s | %-10s | %-10s | %-50s | %-35s' "$percentage"% "$usage" "$total" "$partition" "${mountpoint//sys_root/}")"
         done
         IFS=$oldifs
         if [[ "$overthreshold_disk" == "1" ]]; then
             message+="$table\n\n"
 
             if [ "${REDMINE_ENABLE:-1}" == "1" ]; then
-                if [[ ! -f "/tmp/monocloud-health/redmine_issue_id" ]]; then
+                if [[ ! -f "$TMP_PATH_SCRIPT/redmine_issue_id" ]]; then
 
-                    curl -fsSL -X POST -H "Content-Type: application/json" -H "X-Redmine-API-Key: $REDMINE_API_KEY" -d "{\"issue\": { \"project_id\": \"${REDMINE_PROJECT_ID:-$(echo $IDENTIFIER | cut -d '-' -f 1)}\", \"tracker_id\": \"${REDMINE_TRACKER_ID:-7}\", \"subject\": \"$alarm_hostname - Diskteki bir (ya da birden fazla) bölümün doluluk seviyesi %${PART_USE_LIMIT} üstüne çıktı\", \"description\": \"$table_md\", \"status_id\": \"${REDMINE_STATUS_ID:-open}\", \"priority_id\": \"${REDMINE_PRIORITY_ID:-5}\" }}" "$REDMINE_URL"/issues.json -o /tmp/monocloud-health/redmine.json
+                    curl -fsSL -X POST -H "Content-Type: application/json" -H "X-Redmine-API-Key: $REDMINE_API_KEY" -d "{\"issue\": { \"project_id\": \"${REDMINE_PROJECT_ID:-$(echo "$IDENTIFIER" | cut -d '-' -f 1)}\", \"tracker_id\": \"${REDMINE_TRACKER_ID:-7}\", \"subject\": \"$alarm_hostname - Diskteki bir (ya da birden fazla) bölümün doluluk seviyesi %${PART_USE_LIMIT} üstüne çıktı\", \"description\": \"$table_md\", \"status_id\": \"${REDMINE_STATUS_ID:-open}\", \"priority_id\": \"${REDMINE_PRIORITY_ID:-5}\" }}" "$REDMINE_URL"/issues.json -o "$TMP_PATH_SCRIPT"/redmine.json
                     echo "$"
-                    jq -r '.issue.id' /tmp/monocloud-health/redmine.json >/tmp/monocloud-health/redmine_issue_id
-                    rm -f /tmp/monocloud-health/redmine.json
+                    jq -r '.issue.id' "$TMP_PATH_SCRIPT"/redmine.json >"$TMP_PATH_SCRIPT"/redmine_issue_id
+                    rm -f "$TMP_PATH_SCRIPT"/redmine.json
                 elif [[ "$REDMINE_SEND_UPDATE" == "1" ]]; then
-                    curl -fsSL -X PUT -H "Content-Type: application/json" -H "X-Redmine-API-Key: $REDMINE_API_KEY" -d "{\"issue\": { \"id\": $(cat /tmp/monocloud-health/redmine_issue_id), \"notes\": \"$table_md\" }}" "$REDMINE_URL"/issues/$(cat /tmp/monocloud-health/redmine_issue_id).json
+                    curl -fsSL -X PUT -H "Content-Type: application/json" -H "X-Redmine-API-Key: $REDMINE_API_KEY" \
+                        -d "{\"issue\": { \"id\": $(cat "$TMP_PATH_SCRIPT"/redmine_issue_id), \"notes\": \"$table_md\" }}" \
+                        "$REDMINE_URL"/issues/"$(cat "$TMP_PATH_SCRIPT"/redmine_issue_id)".json
                 fi
                 message+="\n\`\`\`\n"
-                message+="Redmine issue: $REDMINE_URL/issues/$(cat /tmp/monocloud-health/redmine_issue_id)"
+                message+="Redmine issue: $REDMINE_URL/issues/$(cat "$TMP_PATH_SCRIPT"/redmine_issue_id)"
                 message+="\n"
             else
                 message+="\n\`\`\`"
@@ -407,14 +411,28 @@ usage() {
 validate() {
     required_apps=("bc" "curl" "jq")
     missing_apps=""
-    for a in ${required_apps[@]}; do
-        [[ ! -e "$(command -v $a)" ]] && missing_apps+="$a, "
+    for a in "${required_apps[@]}"; do
+        [[ ! -e "$(command -v "$a")" ]] && missing_apps+="$a, "
     done
-    [[ -n "$missing_apps" ]] && { echo -e "${c_red}[ FAIL ] Please install this apps before proceeding: (${missing_apps%, })"; } || { echo -e "${c_green}[  OK  ] Required apps are already installed."; }
-    curl -fsSL $(echo $ALARM_WEBHOOK_URL | grep_custom -o '(?<=\:\/\/)(([a-z]|\.)+)') &>/dev/null
-    [[ ! "$?" -eq "0" ]] && { echo -e "${c_red}[ FAIL ] Webhook URL is not reachable."; } || { echo -e "${c_green}[  OK  ] Webhook URL is reachable."; }
-    touch /tmp/monocloud-health/.testing
-    [[ ! "$?" -eq "0" ]] && { echo -e "${c_red}[ FAIL ] /tmp/monocloud-health is not writable."; } || { echo -e "${c_green}[  OK  ] /tmp/monocloud-health is writable."; }
+    
+    if [[ -n "$missing_apps" ]]; then
+        echo -e "${RED_FG}[ FAIL ] Please install these apps before proceeding: (${missing_apps%, })"
+    else
+        echo -e "${GREEN_FG}[ OK ] Required apps are already installed."
+    fi
+
+    if curl -fsSL "$(echo "$ALARM_WEBHOOK_URL" | grep_custom -o '(?<=\:\/\/)(([a-z]|\.)+)')" &>/dev/null; then
+        echo -e "${GREEN_FG}[  OK  ] Webhook URL is reachable."
+    else
+        echo -e "${RED_FG}[ FAIL ] Webhook URL is not reachable."
+    fi
+
+    if touch "$TMP_PATH_SCRIPT"/.testing &>/dev/null; then
+        echo -e "${GREEN_FG}[  OK  ] $TMP_PATH_SCRIPT is writable."
+        rm "$TMP_PATH_SCRIPT"/.testing
+    else
+        echo -e "${RED_FG}[ FAIL ] $TMP_PATH_SCRIPT is not writable."
+    fi
 }
 
 #~ main
@@ -444,12 +462,10 @@ main() {
 
     parse_monocloud
 
-    export LOAD_LIMIT_CPU="$(echo "$(nproc) * ${LOAD_LIMIT_MULTIPLIER:-1}" | bc) "
+    LOAD_LIMIT_CPU="$(echo "$(nproc) * ${LOAD_LIMIT_MULTIPLIER:-1}" | bc) "
+    export LOAD_LIMIT_CPU
 
     [[ -z "$ALARM_INTERVAL" ]] && ALARM_INTERVAL=3
-    [[ -z "$DYNAMIC_LIMIT_INTERVAL" ]] && DYNAMIC_LIMIT_INTERVAL=100
-
-    dynamic_limit
 
     [[ $# -eq 0 ]] && {
         check_status
@@ -485,4 +501,4 @@ main() {
 
 main "$@"
 
-rm ${pid_file}
+rm "${pid_file}"
