@@ -7,3 +7,9 @@
 | [k8s-s3-uploader.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/k8s-s3-uploader.sh) | Upload K8s resource logs to S3 bucket |
 | [postal-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/postal-health.sh) | Checks the status of postal and related services |
 | [os-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/os-health.sh) | This script is used to check the health of the server |
+| [ERROR](https://github.com/monobilisim/mono.sh/tree/main/caddy) | ./caddy/.dirinfo not defined... |
+| [ERROR](https://github.com/monobilisim/mono.sh/tree/main/database) | ./database/.dirinfo not defined... |
+| [ERROR](https://github.com/monobilisim/mono.sh/tree/main/kubernetes) | ./kubernetes/.dirinfo not defined... |
+| [ERROR](https://github.com/monobilisim/mono.sh/tree/main/mail) | ./mail/.dirinfo not defined... |
+| [ERROR](https://github.com/monobilisim/mono.sh/tree/main/monofon) | ./monofon/.dirinfo not defined... |
+| [ERROR](https://github.com/monobilisim/mono.sh/tree/main/system) | ./system/.dirinfo not defined... |
