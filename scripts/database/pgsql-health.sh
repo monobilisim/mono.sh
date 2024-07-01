@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 ###~ description: Checks the status of PostgreSQL and Patroni cluster
+#shellcheck disable=SC2034
 
 #~ variables
 script_version="v2.5.0"
@@ -8,10 +9,11 @@ SCRIPT_NAME_PRETTY="PGSQL Health"
 
 # https://stackoverflow.com/questions/4774054/reliable-way-for-a-bash-script-to-get-the-full-path-to-itself
 SCRIPTPATH="$(
-    cd -- "$(dirname "$0")" >/dev/null 2>&1
+    cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit
     pwd -P
 )"
 
+#shellcheck disable=SC1091
 . "$SCRIPTPATH"/../common.sh
 
 create_tmp_dir
@@ -61,7 +63,7 @@ function pgsql_uptime() {
     fi
 
     if eval "$command" &>/dev/null; then
-        uptime="$(eval $command | awk 'NR==3' | xargs)"
+        uptime="$(eval "$command" | awk 'NR==3' | xargs)"
         alarm_check_up "now" "Can run 'SELECT' statements again"
         print_colour "Uptime" "$uptime"
     else
@@ -161,10 +163,10 @@ function cluster_status() {
     i=0
     for cluster in "${cluster_names[@]}"; do
         print_colour "$cluster" "${cluster_roles[$i]}"
-        if [ -f $TMP_PATH_SCRIPT/raw_output.json ]; then
-            old_role="$(jq -r '.members['"$i"'] | .role' <$TMP_PATH_SCRIPT/raw_output.json)"
+        if [ -f "$TMP_PATH_SCRIPT"/raw_output.json ]; then
+            old_role="$(jq -r '.members['"$i"'] | .role' <"$TMP_PATH_SCRIPT"/raw_output.json)"
             if [ "${cluster_roles[$i]}" != "$old_role" ] &&
-                [ "$cluster" == "$(jq -r '.members['"$i"'] | .name' <$TMP_PATH_SCRIPT/raw_output.json)" ]; then
+                [ "$cluster" == "$(jq -r '.members['"$i"'] | .name' <"$TMP_PATH_SCRIPT"/raw_output.json)" ]; then
                 echo "  Role of $cluster has changed!"
                 print_colour "  Old Role of $cluster" "$old_role" "error"
                 printf '\n'
@@ -188,7 +190,7 @@ function cluster_status() {
         fi
         i=$((i + 1))
     done
-    echo "$output" | jq >$TMP_PATH_SCRIPT/raw_output.json
+    echo "$output" | jq >"$TMP_PATH_SCRIPT"/raw_output.json
 
     printf '\n'
     echo_status "Cluster States"
@@ -227,4 +229,4 @@ function main() {
 
 main
 
-rm ${pid_file}
+rm "${pid_file}"
