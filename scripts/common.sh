@@ -40,7 +40,7 @@ function yaml() {
         exit 1
     fi
 
-    OUTPUT=$(yq "$1" $CONFIG_PATH/"$2")
+    OUTPUT=$(yq "$1" "$CONFIG_PATH"/"$CONFIG_PATH_DATA")
 
     case $OUTPUT in
     null)
@@ -96,7 +96,7 @@ function parse_common() {
     readarray -t ALARM_WEBHOOK_URLS < <(yaml .alarm.webhook_urls[] "main")
     IDENTIFIER="$(yaml .identifier "main" "$(hostname)")"
     SEND_ALARM="$(yaml '.send_alarm' "main" 1)"
-    ALARM_INTERVAL="$(yaml .alarm_interval 3)"
+    ALARM_INTERVAL="$(yaml .alarm_interval "main"  3)"
 
     ## Bot
     SEND_DM_ALARM="$(yaml '.alarm.bot.enabled' "main" 0)"

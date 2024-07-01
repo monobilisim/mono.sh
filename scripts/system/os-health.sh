@@ -13,7 +13,7 @@ SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit ; pwd -P )"
 #shellcheck disable=SC1091
 . "$SCRIPTPATH"/../common.sh
 
-create_tmp_dir
+create_tmp_dir &> /dev/null
 
 cron_mode "$ENABLE_CRON"
 
@@ -44,51 +44,43 @@ grep_custom() {
 
 #~ check partitions
 check_partitions() {
-    local partitions
-    partitions=$(df -l -T | awk '{print $1,$2,$7}' | sed '1d' | sort | uniq | grep -E "${FILESYSTEMS[*]// /|}" | awk '$2 != "zfs" {print} $2 == "zfs" && $1 !~ /\//')
-
+    local partitions="$(df -l -T | awk '{print $1,$2,$7}' | sed '1d' | sort | uniq | grep -E $(echo ${FILESYSTEMS[@]} | sed 's/ /|/g') | awk '$2 != "zfs" {print} $2 == "zfs" && $1 !~ /\//')"
     oldIFS=$IFS
-    json="["
-    local json
+    local json="["
     IFS=$'\n'
     for partition in $partitions; do
-        IFS=$oldIFS info=("$partition")
-        partition="${info[0]}"
-        filesystem="${info[1]}"
-        mountpoint="${info[2]}"
-        local partition
-        local filesystem
-        local mountpoint
-        for confilesystem in "${FILESYSTEMS[@]}"; do
-            if [[ "$confilesystem" =~ $filesystem ]]; then
-                case $filesystem in
-                    "fuse.zfs")
-                        note="Fuse ZFS is not supported yet."
-                        usage="0"
-                        avail="0"
-                        total="0"
-                        percentage="0"
-                        ;;
-                    "zfs")
-                        usage=$(zfs list -H -p -o used "$partition")
-                        avail=$(zfs list -H -p -o avail "$partition")
-                        total=$((usage + avail))
-                        percentage=$((usage * 100 / total))
-                        ;;
-                    "btrfs")
-                        usage=$(btrfs filesystem us -b "$mountpoint" | grep_custom '^\s.+Used' | awk '{print $2}')
-                        total=$(btrfs filesystem us -b "$mountpoint" | grep_custom 'Device size' | awk '{print $3}')
-                        percentage=$(echo "scale=2; $usage / $total * 100" | bc)
-                        ;;
-                    *)
-                        readarray -t stat < <(df -P "$mountpoint" | sed '1d' | awk '{printf "%s %-12s  %s\n", $3*1024, $2*1024, $5}')
-                        usage=${stat[0]}
-                        total=${stat[1]}
-                        percentage=${stat[2]}
-                        ;;
-                esac
-            fi
-        done
+        IFS=$oldIFS info=($partition)
+        local partition="${info[0]}"
+        local filesystem="${info[1]}"
+        local mountpoint="${info[2]}"
+        if [[ "${FILESYSTEMS[@]}" =~ "$filesystem" ]]; then
+            case $filesystem in
+            "fuse.zfs")
+                note="Fuse ZFS is not supported yet."
+                usage="0"
+                avail="0"
+                total="0"
+                percentage="0"
+                ;;
+            "zfs")
+                usage=$(zfs list -H -p -o used "$partition")
+                avail=$(zfs list -H -p -o avail "$partition")
+                total=$((usage + avail))
+                percentage=$((usage * 100 / total))
+                ;;
+            "btrfs")
+                usage=$(btrfs filesystem us -b "$mountpoint" | grep_custom '^\s.+Used' | awk '{print $2}')
+                total=$(btrfs filesystem us -b "$mountpoint" | grep_custom 'Device size' | awk '{print $3}')
+                percentage=$(echo "scale=2; $usage / $total * 100" | bc)
+                ;;
+            *)
+                stat=($(df -P $mountpoint | sed '1d' | awk '{printf "%s %-12s   %s\n", $3*1024, $2*1024, $5}'))
+                usage=${stat[0]}
+                total=${stat[1]}
+                percentage=${stat[2]}
+                ;;
+            esac
+        fi
         [[ "$usage" != "0" ]] && usage=$(convertToProper "$usage")
         [[ "$total" != "0" ]] && total=$(convertToProper "$total")
         json+="{\"partition\":\"$partition\",\"filesystem\":\"$filesystem\",\"mountpoint\":\"$mountpoint\",\"percentage\":\"${percentage//%/}\",\"usage\":\"$usage\",\"total\":\"$total\", \"note\":\"${note:-OK}\"},"
@@ -119,7 +111,7 @@ check_status() {
     oldIFS=$IFS
     IFS=$'\n'
     for i in "${info[@]}"; do
-        IFS=$oldIFS a=("$i")
+        IFS=$oldIFS a=($i)
         if [[ ${a[0]} -gt $PART_USE_LIMIT ]]; then
             print_colour "Disk Usage is ${a[3]}" "greater than $PART_USE_LIMIT (${a[0]}%)" "error"
         else
@@ -464,8 +456,6 @@ main() {
 
     LOAD_LIMIT_CPU="$(echo "$(nproc) * ${LOAD_LIMIT_MULTIPLIER:-1}" | bc) "
     export LOAD_LIMIT_CPU
-
-    [[ -z "$ALARM_INTERVAL" ]] && ALARM_INTERVAL=3
 
     [[ $# -eq 0 ]] && {
         check_status
