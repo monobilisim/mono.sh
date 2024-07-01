@@ -22,10 +22,10 @@ function cron_mode() {
         RESET=""
     
         #~ log file prefix
-        echo "=== ( $(date) - $HOSTNAME ) =========================================" >$TMP_PATH/$SCRIPT_NAME.log
+        echo "=== ( $(date) - $HOSTNAME ) =========================================" >"$TMP_PATH"/"$SCRIPT_NAME".log
     
         #~ redirect all outputs to file
-        exec &>>$TMP_PATH/$SCRIPT_NAME.log
+        exec &>>$TMP_PATH/"$SCRIPT_NAME".log
     fi
 }
 
