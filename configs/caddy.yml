@@ -1,0 +1,15 @@
+send_alarm: true
+
+caddy:
+  api_urls:
+    - "testusername:testpassword@localhost:2019;identifier1"
+    - "testusername:testpassword@localhost:2019;identifier2"
+  servers:
+    - "test.com"
+    - "test2.com"
+  lb_urls:
+    - "whoami.test.com"
+    - "whoami.test2.com"
+  override_config: true
+  nochange_exit_threshold: 3
+  loop_order: "API_URLS"
