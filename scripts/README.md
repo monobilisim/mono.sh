@@ -7,4 +7,5 @@
 | [k8s-s3-uploader.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/k8s-s3-uploader.sh) | Upload K8s resource logs to S3 bucket |
 | [pmg-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/pmg-health.sh) | Checks the status of pmg and related services |
 | [postal-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/postal-health.sh) | Checks the status of postal and related services |
+| [zimbra-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/zimbra-health.sh) | This script checks zimbra and zextras health |
 | [os-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/os-health.sh) | This script is used to check the health of the server |
