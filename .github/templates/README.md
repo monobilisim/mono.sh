@@ -12,7 +12,7 @@
 </a>
 
 <h2 align="center">Mono Script Collection</h2>
-There are scripts that provide more than one convenience in this collection
+The collection includes scripts that streamline multiple tasks, offering convenience to users.
 
 </div>
 
