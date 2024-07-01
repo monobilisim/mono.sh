@@ -73,11 +73,6 @@ else
     alarm_check_up "messagedb" "Able to connect messagedb at host $message_db_host at $IDENTIFIER"
 fi
 
-function echo_status() {
-    echo "$1"
-    echo ---------------------------------------------------
-}
-
 fnServices() {
     if systemctl status postal >/dev/null; then
         if [ -z "$(command -v docker)" ]; then

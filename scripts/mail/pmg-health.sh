@@ -74,7 +74,7 @@ function queued_messages() {
 function main() {
     pid_file="$(create_pid)"
     printf '\n'
-    echo "Monomail PMG Health $VERSION - $(date)"
+    echo "PMG Health $VERSION - $(date)"
     printf '\n'
     check_pmg_services
     printf '\n'
