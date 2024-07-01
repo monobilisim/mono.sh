@@ -2,6 +2,11 @@
 ###~ description: Check the health of the mono-k8s cluster
 VERSION="1.5.0"
 
+#shellcheck disable=SC2034
+SCRIPT_NAME="k8s-health"
+#shellcheck disable=SC2034
+SCRIPT_NAME_PRETTY="K8s Health"
+
 [[ "$1" == '-v' ]] || [[ "$1" == '--version' ]] && {
     echo "$VERSION"
     exit 0
