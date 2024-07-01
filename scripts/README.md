@@ -8,4 +8,5 @@
 | [pmg-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/pmg-health.sh) | Checks the status of pmg and related services |
 | [postal-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/postal-health.sh) | Checks the status of postal and related services |
 | [zimbra-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/zimbra-health.sh) | This script checks zimbra and zextras health |
+| [monofon-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/monofon-health.sh) | Checks the status of monofon and related services |
 | [os-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/os-health.sh) | This script is used to check the health of the server |
