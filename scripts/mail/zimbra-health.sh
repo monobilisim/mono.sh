@@ -243,7 +243,7 @@ function main() {
     printf '\n'
     queued_messages
 
-    rm -rf /tmp/monomail-zimbra-health/zimbra_session_*_status.txt
+    rm -rf "$TMP_PATH_SCRIPT"/zimbra_session_*_status.txt
 }
 
 main
