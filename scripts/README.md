@@ -1,5 +1,8 @@
 | Script | Description |
 |--|--|
+| [caddy-common.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/caddy-common.sh) | Common functions for Caddy scripts |
+| [caddy-lb-policy-list.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/caddy-lb-policy-list.sh) | List all load balancer policies for all Caddy servers |
+| [caddy-lb-policy-switch.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/caddy-lb-policy-switch.sh) | Switch the load balancing policy of a Caddy server |
 | [common.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/common.sh) | Common functions for all scripts |
 | [mysql-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/mysql-health.sh) | Checks the status of MySQL and MySQL cluster |
 | [pgsql-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/pgsql-health.sh) | Checks the status of PostgreSQL and Patroni cluster |
