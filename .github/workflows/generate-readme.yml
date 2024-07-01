@@ -1,0 +1,43 @@
+name: Generate new README.md
+
+on: 
+  push:
+    branches: 
+      - main
+
+jobs:
+  generate: 
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v3
+
+      - name: get information
+        shell: bash
+        run: |
+          cp $PWD/.github/templates/README.md $PWD/
+          for a in $(find . -maxdepth 1 -type d -not -path '*/\.*' \( ! -iname ".*" \) | grep -v config | sort); do
+             directory="$(basename $a)"
+             [[ ! -e $a/.dirinfo ]] && { DIRNAME="ERROR"; DIRINFO="$a/.dirinfo not defined..."; } || { DIRNAME="$(cat $a/.dirinfo | grep 'name:' | cut -d ' ' -f2- )"; DIRINFO="$(cat $a/.dirinfo | grep 'description:' | cut -d ' ' -f2-)"; }
+             echo -e "| [${DIRNAME}](https://github.com/monobilisim/mono.sh/tree/main/$(basename $a)) | ${DIRINFO} |" >> README.md
+             pushd $a
+             [[ -e "README.md" ]] && rm README.md
+             echo -e "| Script | Description |\n|--|--|" > README.md
+             for b in $(find . -type f -iname "*.sh" | sort); do
+                filename="$(basename $b)"
+                fileurl="https://github.com/monobilisim/mono.sh/blob/main/$directory/$filename"
+                filedescription="$(cat $b | grep '###~ description' | awk -F ': ' '{print $2}')"
+                echo -e "| [$filename]($fileurl) | $filedescription |" >> README.md
+             done
+             popd
+          done
+       
+      - name: Commit and push results
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git config user.name 'github-actions[bot]'
+            git config user.email 'github-actions[bot]@users.noreply.github.com'
+            git add -A 
+            git commit -m "Update README.md"
+            git push
+          fi
