@@ -40,7 +40,7 @@ function yaml() {
         exit 1
     fi
 
-    OUTPUT=$(yq "$1" "$CONFIG_PATH"/"$CONFIG_PATH_DATA")
+    OUTPUT=$(yq -r "$1" "$CONFIG_PATH"/"$CONFIG_PATH_DATA")
 
     case $OUTPUT in
     null)
@@ -55,10 +55,10 @@ function yaml() {
             echo "$3"
         fi
         ;;
-    true)
+    true | True)
         echo "1"
         ;;
-    false)
+    false | False)
         echo "0"
         ;;
     *)
