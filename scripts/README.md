@@ -13,3 +13,4 @@
 | [zimbra-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/zimbra-health.sh) | This script checks zimbra and zextras health |
 | [monofon-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/monofon-health.sh) | Checks the status of monofon and related services |
 | [os-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/os-health.sh) | This script is used to check the health of the server |
+| [wppconnect-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/wppconnect-health.sh) | Check the status of WPPConnect sessions |
