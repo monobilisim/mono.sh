@@ -1,2 +1,6 @@
-wpp_secret: test
-wpp_url: https://example.com
+wpp:
+  secret: test
+  url: https://example.com
+
+alarm:
+  enabled: true
