@@ -289,9 +289,9 @@ report_status() {
 
             [[ "$mountpoint" == "/" ]] && mountpoint="/sys_root"
 
-            if [[ -f "$TMP_PATH_SCRIPT/${mountpoint//\//_}-redmine" ]]; then
+            if [[ -f "$TMP_PATH_SCRIPT/${mountpoint//\//_}-redmine-down" ]]; then
                 curl -fsSL -X PUT -H "Content-Type: application/json" -H "X-Redmine-API-Key: $REDMINE_API_KEY" -d "{\"issue\": { \"id\": $(cat "$TMP_PATH_SCRIPT"/redmine_issue_id), \"notes\": \"${partition}, %$PART_USE_LIMIT altına geri indi.\"}}" "$REDMINE_URL"/issues/"$(cat "$TMP_PATH_SCRIPT"/redmine_issue_id)".json 
-                rm -f "$TMP_PATH_SCRIPT/${mountpoint//\//_}-redmine"
+                rm -f "$TMP_PATH_SCRIPT/${mountpoint//\//_}-redmine-down"
             fi
             
             [[ -f "$TMP_PATH_SCRIPT/${mountpoint//\//_}" ]] && {
@@ -350,10 +350,12 @@ report_status() {
                     continue
                 else
                     date +%Y-%m-%d >"$TMP_PATH_SCRIPT"/"${mountpoint//\//_}"
+                    date +%Y-%m-%d >"$TMP_PATH_SCRIPT"/"${mountpoint//\//_}"-redmine-down
                     overthreshold_disk=1
                 fi
             else
                 date +%Y-%m-%d >"$TMP_PATH_SCRIPT"/"${mountpoint//\//_}"
+                date +%Y-%m-%d >"$TMP_PATH_SCRIPT"/"${mountpoint//\//_}"-redmine-down
                 overthreshold_disk=1
             fi
 
