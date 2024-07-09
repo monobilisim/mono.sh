@@ -73,6 +73,17 @@ function pgsql_uptime() {
     fi
 }
 
+function write_active_connections() {
+    mkdir -p /var/log/monodb
+    if grep iasdb /etc/passwd &>/dev/null; then
+        su - iasdb -c "psql -c \"SELECT pid, now() - pg_stat_activity.query_start AS duration, query, state FROM pg_stat_activity  WHERE state='active' ORDER BY duration DESC;\"" >/var/log/monodb/pgsql-stat_activity-"$(date +"%a")".log
+    elif grep gitlab-psql /etc/passwd &>/dev/null; then
+        gitlab-psql -c "SELECT pid, now() - pg_stat_activity.query_start AS duration, query, state FROM pg_stat_activity  WHERE state='active' ORDER BY duration DESC;" >/var/log/monodb/pgsql-stat_activity-"$(date +"%a")".log
+    else
+        su - postgres -c "psql -c \"SELECT pid, now() - pg_stat_activity.query_start AS duration, query, state FROM pg_stat_activity  WHERE state='active' ORDER BY duration DESC;\"" >/var/log/monodb/pgsql-stat_activity-"$(date +"%a")".log
+    fi
+}
+
 function check_active_connections() {
     echo_status "Active Connections"
     if grep iasdb /etc/passwd &>/dev/null; then
@@ -83,32 +94,36 @@ function check_active_connections() {
         max_and_used=$(su - postgres -c "psql -c \"SELECT max_conn, used FROM (SELECT COUNT(*) used FROM pg_stat_activity) t1, (SELECT setting::int max_conn FROM pg_settings WHERE name='max_connections') t2;\"" | awk 'NR==3')
     fi
 
-    file="/tmp/monodb-pgsql-health/last-connection-above-limit.txt"
+    file="$TMP_PATH_SCRIPT/last-connection-above-limit.txt"
     max_conn="$(echo "$max_and_used" | awk '{print $1}')"
     used_conn="$(echo "$max_and_used" | awk '{print $3}')"
 
     used_percentage=$(echo "$max_conn $used_conn" | awk '{print ($2*100/$1)}')
     if [ -f "$file" ]; then
-        increase=$(cat $file)
+        increase="$(cat "$file")"
     else
         increase=1
     fi
 
     if eval "$(echo "$used_percentage $CONN_LIMIT_PERCENT" | awk '{if ($1 >= $2) print "true"; else print "false"}')"; then
+        if [[ ! -f "$TMP_PATH_SCRIPT" ]]; then
+            write_active_connections
+        fi
         alarm_check_down "active_conn" "Number of active connections is $used_conn/$max_conn ($used_percentage%) and above $CONN_LIMIT_PERCENT%"
         print_colour "Number of Active Connections" "$used_conn/$max_conn ($used_percentage%) and Above $CONN_LIMIT_PERCENT%" "error"
         difference=$(((${used_percentage%.*} - ${CONN_LIMIT_PERCENT%.*}) / 10))
         if [[ $difference -ge $increase ]]; then
+            write_active_connections
             if [ -f "$file" ]; then
                 alarm "[PostgreSQL - $IDENTIFIER] [:red_circle:] Number of Active Connections has passed $((CONN_LIMIT_PERCENT + (increase * 10)))% - It is now $used_conn ($used_percentage%)"
             fi
             increase=$((difference + 1))
         fi
-        echo "$increase" >$file
+        echo "$increase" >"$file"
     else
         alarm_check_up "active_conn" "Number of active connections is $used_conn/$max_conn ($used_percentage%) and below $CONN_LIMIT_PERCENT%"
         print_colour "Number of Active Connections" "$used_conn/$max_conn ($used_percentage%) and below $CONN_LIMIT_PERCENT%"
-        rm -f $file
+        rm -f "$file"
     fi
 }
 
