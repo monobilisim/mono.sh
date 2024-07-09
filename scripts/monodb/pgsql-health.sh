@@ -198,10 +198,10 @@ function cluster_status() {
     for cluster in "${cluster_names[@]}"; do
         if [ "${cluster_states[$i]}" == "running" ] || [ "${cluster_states[$i]}" == "streaming" ]; then
             print_colour "$cluster" "${cluster_states[$i]}"
-            alarm_check_up "$cluster" "Cluster $cluster, is ${cluster_states[$i]} again"
+            alarm_check_up "$cluster" "Cluster $cluster, ${cluster_states[$i]} again"
         else
             print_colour "$cluster" "${cluster_states[$i]}" "error"
-            alarm_check_down "$cluster" "Cluster $cluster, is ${cluster_states[$i]}"
+            alarm_check_down "$cluster" "Cluster $cluster, ${cluster_states[$i]}"
         fi
         i=$((i + 1))
     done
