@@ -44,57 +44,39 @@ function select_now() {
     fi
 }
 
+function write_processlist() {
+    mkdir -p /var/log/monodb
+    mysql -e "SELECT * FROM INFORMATION_SCHEMA.PROCESSLIST WHERE USER != 'root' ORDER BY TIME DESC;" >/var/log/monodb/mysql-processlist-"$(date +"%a")".log
+}
+
 function check_process_count() {
     echo_status "Number of Processes:"
     processlist_count=$(/usr/bin/mysqladmin processlist | grep -vc 'show processlist')
-
-    if [[ "$processlist_count" -lt "$PROCESS_LIMIT" ]]; then
-        alarm_check_up "no_processes" "Number of processes is below limit: $processlist_count/$PROCESS_LIMIT" "process"
-        print_colour "Number of Processes" "$processlist_count/$PROCESS_LIMIT"
-    else
-        alarm_check_down "no_processes" "Number of processes is above limit: $processlist_count/$PROCESS_LIMIT" "process"
-        print_colour "Number of Processes" "$processlist_count/$PROCESS_LIMIT" "error"
-    fi
-
-}
-
-function write_active_connections() {
-    mkdir -p /var/log/monodb
-    mysql -e "SELECT * FROM INFORMATION_SCHEMA.PROCESSLIST WHERE STATE = 'executing' AND USER != 'root' ORDER BY TIME DESC;" >/var/log/monodb/mysql-processlist-"$(date +"%a")".log
-}
-
-function check_active_connections() {
-    echo_status "Active Connections"
-    max_and_used=$(mysql -sNe "SELECT @@max_connections AS max_conn, (SELECT COUNT(*) FROM information_schema.processlist WHERE state = 'executing') AS used;")
-    
-    file="/tmp/monodb-mysql-health/last-connection-above-limit.txt"
-    max_conn="$(echo "$max_and_used" | awk '{print $1}')"
-    used_conn="$(echo "$max_and_used" | awk '{print $2}')"
-  
-    used_percentage=$(echo "$max_conn $used_conn" | awk '{print ($2*100/$1)}')
+    file="/tmp/monodb-pgsql-health/processlist.txt"
     if [ -f "$file" ]; then
         increase=$(cat $file)
     else
         increase=1
     fi
-  
-    if eval "$(echo "$used_percentage $CONN_LIMIT_PERCENT" | awk '{if ($1 >= $2) print "true"; else print "false"}')"; then
-        alarm_check_down "active_conn" "Number of Active Connections is $used_conn ($used_percentage%) and Above $CONN_LIMIT_PERCENT%"
-        print_colour "Number of Active Connections" "$used_conn ($used_percentage)% and Above $CONN_LIMIT_PERCENT%" "error"
-        difference=$(((${used_percentage%.*} - ${CONN_LIMIT_PERCENT%.*}) / 10))
+
+    if [[ "$processlist_count" -lt "$PROCESS_LIMIT" ]]; then
+        alarm_check_up "no_processes" "Number of processes is below limit: $processlist_count/$PROCESS_LIMIT" "process"
+        print_colour "Number of Processes" "$processlist_count/$PROCESS_LIMIT"
+        rm -f $file
+    else
+        alarm_check_down "no_processes" "Number of processes is above limit: $processlist_count/$PROCESS_LIMIT" "process"
+        print_colour "Number of Processes" "$processlist_count/$PROCESS_LIMIT" "error"
+        difference=$(((processlist_count - PROCESS_LIMIT)/10))
         if [[ $difference -ge $increase ]]; then
-            write_active_connections
+            write_processlist
             if [ -f "$file" ]; then
-                alarm "[MySQL - $IDENTIFIER] [:red_circle:] Number of Active Connections has passed $((CONN_LIMIT_PERCENT + (increase * 10)))% - It is now $used_conn ($used_percentage%)"
+                alarm "[MySQL - $IDENTIFIER] [:red_circle:] Number of processes surpassed $((PROCESS_LIMIT+(increase*10))): $processlist_count/$PROCESS_LIMIT"
             fi
             increase=$((difference + 1))
         fi
         echo "$increase" >$file
-    else
-        alarm_check_up "active_conn" "Number of Active Connections is $used_conn ($used_percentage)% and Below $CONN_LIMIT_PERCENT%"
-        print_colour "Number of Active Connections" "$used_conn ($used_percentage)% and Below $CONN_LIMIT_PERCENT%"
-        rm -f $file
     fi
+
 }
 
 function check_cluster_status() {
