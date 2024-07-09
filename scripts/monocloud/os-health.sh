@@ -415,11 +415,13 @@ validate() {
         echo -e "${GREEN_FG}[ OK ] Required apps are already installed."
     fi
 
-    if curl -fsSL "$(echo "$ALARM_WEBHOOK_URL" | grep_custom -o '(?<=\:\/\/)(([a-z]|\.)+)')" &>/dev/null; then
-        echo -e "${GREEN_FG}[  OK  ] Webhook URL is reachable."
-    else
-        echo -e "${RED_FG}[ FAIL ] Webhook URL is not reachable."
-    fi
+    for ALARM_WEBHOOK_URL in "${ALARM_WEBHOOK_URLS[@]}"; do
+        if curl -fsSL "$(echo "$ALARM_WEBHOOK_URL" | grep_custom -o '(?<=\:\/\/)(([a-z]|\.)+)')" &>/dev/null; then
+            echo -e "${GREEN_FG}[  OK  ] Webhook URL is reachable."
+        else
+            echo -e "${RED_FG}[ FAIL ] Webhook URL is not reachable."
+        fi
+    done
 
     if touch "$TMP_PATH_SCRIPT"/.testing &>/dev/null; then
         echo -e "${GREEN_FG}[  OK  ] $TMP_PATH_SCRIPT is writable."
