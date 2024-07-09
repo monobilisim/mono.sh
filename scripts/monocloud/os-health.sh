@@ -338,7 +338,7 @@ report_status() {
 
             [[ "$mountpoint" == "/" ]] && mountpoint="/sys_root"
 
-            if [[ -f "$TMP_PATH_SCRIPT/${mountpoint//\//_}-redmine" && "$(cat /tmp/monocloud-health/"${mountpoint//\//_}"-redmine)" != "$percentage" ]]; then
+            if [[ -f "$TMP_PATH_SCRIPT/${mountpoint//\//_}-redmine" && "$(cat "$TMP_PATH_SCRIPT"/"${mountpoint//\//_}"-redmine)" != "$percentage" ]]; then
                 REDMINE_SEND_UPDATE=1
             fi
 

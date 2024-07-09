@@ -52,7 +52,7 @@ function write_processlist() {
 function check_process_count() {
     echo_status "Number of Processes:"
     processlist_count=$(/usr/bin/mysqladmin processlist | grep -vc 'show processlist')
-    file="/tmp/monodb-pgsql-health/processlist.txt"
+    file="$TMP_PATH_SCRIPT/processlist.txt"
     if [ -f "$file" ]; then
         increase=$(cat $file)
     else

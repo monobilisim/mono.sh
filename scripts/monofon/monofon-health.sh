@@ -277,7 +277,7 @@ function asterisk_error_check() {
 }
 
 # function delete_time_diff() {
-#     file_path="/tmp/monofon-health/monofon_$1_time.txt"
+#     file_path="$TMP_PATH_SCRIPT/monofon_$1_time.txt"
 #     if [ -f "${file_path}" ]; then
 #         rm -rf "${file_path}"
 #     fi
@@ -337,7 +337,7 @@ check_voice_records() {
 
 function rewrite_monofon_data() {
     if ! containsElement "monofon" "${IGNORED_SERVICES[@]}"; then
-        file="/tmp/monofon-health/rewrite-monofon-data-row-count.txt"
+        file="$TMP_PATH_SCRIPT/rewrite-monofon-data-row-count.txt"
         if [[ -f /var/www/html/monofon-pano-yeni/scripts/asterniclog-manual-mysql.php ]] && ! containsElement "monofon" "${IGNORED_SERVICES[@]}"; then
             if [[ "$(date "+%H:%M")" == "01:00" ]]; then
                 screen -dm php /var/www/html/monofon-pano-yeni/scripts/asterniclog-manual-mysql.php "$(date -d "yesterday" '+%Y-%m-%d')"
@@ -354,7 +354,7 @@ function rewrite_monofon_data() {
 
 function check_data_file() {
     echo_status "Checking data.json"
-    data_timestamp="/tmp/monofon-health/monofon_data-json.txt"
+    data_timestamp="$TMP_PATH_SCRIPT/monofon_data-json.txt"
     data_file="/var/www/html/monofon-pano-yeni/data/data.json"
     if [ -f $data_timestamp ]; then
         before=$(cat $data_timestamp)

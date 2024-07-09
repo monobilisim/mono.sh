@@ -60,8 +60,8 @@ function upload_to_s3() {
     
     configure_s3
 
-    [ -d "/tmp/monok8s-s3-uploader/logs" ] && rm -r /tmp/monok8s-s3-uploader/logs
-    mkdir -p /tmp/monok8s-s3-uploader/logs
+    [ -d "$TMP_PATH_SCRIPT/logs" ] && rm -r "$TMP_PATH_SCRIPT"/logs
+    mkdir -p "$TMP_PATH_SCRIPT"/logs
 
     for resource in "${K8S_LOG_LIST[@]}"; do
         # example resource: test-namespace/pod/test-pod
@@ -72,8 +72,8 @@ function upload_to_s3() {
         resource_name=${parts[2]}
         date_day="$(date +'%Y-%m-%d')"
         date="$(date +'%Y-%m-%d-%H:%M:%S')"
-        p="/tmp/monok8s-s3-uploader/logs/$namespace/$resource_type/$resource_name/$date-$resource_name.log"
-        mkdir -p "/tmp/monok8s-s3-uploader/logs/$namespace/$resource_type/$resource_name"
+        p="$TMP_PATH_SCRIPT/logs/$namespace/$resource_type/$resource_name/$date-$resource_name.log"
+        mkdir -p "$TMP_PATH_SCRIPT/logs/$namespace/$resource_type/$resource_name"
         if ! kubectl logs -n "$namespace" "$resource_type/$resource_name" &>"$p"; then
             print_colour "$resource_name" "failed to get" "error"
             alarm_check_down "$resource_name" "Failed to get logs"
