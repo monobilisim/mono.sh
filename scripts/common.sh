@@ -11,6 +11,8 @@ GREEN_FG=$(tput setaf 2)
 BLUE_FG=$(tput setaf 4)
 RESET=$(tput sgr0)
 
+export TMP_PATH_SCRIPT="$TMP_PATH"/"$SCRIPT_NAME"
+
 function cron_mode() {
     if [[ "$1" == "1" ]]; then
         export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -118,7 +120,6 @@ function parse_common() {
 
 function create_tmp_dir() {
     mkdir -p "$TMP_PATH"/"$SCRIPT_NAME"
-    echo "$TMP_PATH"/"$SCRIPT_NAME"
 }
 
 function echo_status() {
