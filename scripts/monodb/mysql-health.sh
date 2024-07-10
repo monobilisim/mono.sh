@@ -169,8 +169,6 @@ function main() {
     printf '\n'
     check_process_count
     printf '\n'
-    check_active_connections
-    printf '\n'
     if [ "$IS_CLUSTER" -eq 1 ]; then
         check_cluster_status
         check_node_status
