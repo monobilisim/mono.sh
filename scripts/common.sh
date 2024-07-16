@@ -95,27 +95,27 @@ function check_yq() {
 
 function parse_common() {
     # Alarm
-    readarray -t ALARM_WEBHOOK_URLS < <(yaml .alarm.webhook_urls[] "main")
-    IDENTIFIER="$(yaml .identifier "main" "$(hostname)")"
-    SEND_ALARM="$(yaml '.send_alarm' "main" 1)"
-    ALARM_INTERVAL="$(yaml .alarm_interval "main"  3)"
+    readarray -t ALARM_WEBHOOK_URLS < <(yaml .alarm.webhook_urls[] "global")
+    IDENTIFIER="$(yaml .identifier "global" "$(hostname)")"
+    SEND_ALARM="$(yaml '.send_alarm' "global" 1)"
+    ALARM_INTERVAL="$(yaml .alarm_interval "global" 3)"
 
     ## Bot
-    SEND_DM_ALARM="$(yaml '.alarm.bot.enabled' "main" 0)"
-    ALARM_BOT_API_URL="$(yaml .alarm.bot.alarm_url "main")"
-    ALARM_BOT_EMAIL="$(yaml .alarm.bot.email "main")"
-    ALARM_BOT_API_KEY="$(yaml .alarm.bot.api_key "main")"
-    readarray -t ALARM_BOT_USER_EMAILS < <(yaml .alarm.bot.user_emails[] "main")
+    SEND_DM_ALARM="$(yaml '.alarm.bot.enabled' "global" 0)"
+    ALARM_BOT_API_URL="$(yaml .alarm.bot.alarm_url "global")"
+    ALARM_BOT_EMAIL="$(yaml .alarm.bot.email "global")"
+    ALARM_BOT_API_KEY="$(yaml .alarm.bot.api_key "global")"
+    readarray -t ALARM_BOT_USER_EMAILS < <(yaml .alarm.bot.user_emails[] "global")
 
     ## Redmine (WIP)
-    REDMINE_API_KEY="$(yaml .redmine.api_key "main")"
-    REDMINE_URL="$(yaml .redmine.url "main")"
-    REDMINE_ENABLE="$(yaml '.redmine.enabled' "main" 1)"
-    REDMINE_PROJECT_ID="$(yaml .redmine.project_id "main")"
-    REDMINE_TRACKER_ID="$(yaml .redmine.tracker_id "main")"
-    REDMINE_PRIORITY_ID="$(yaml .redmine.priority_id "main")"
-    REDMINE_STATUS_ID="$(yaml .redmine.status_id "main")"
-    REDMINE_STATUS_ID_CLOSED="$(yaml .redmine.status_id_closed "main")"
+    REDMINE_API_KEY="$(yaml .redmine.api_key "global")"
+    REDMINE_URL="$(yaml .redmine.url "global")"
+    REDMINE_ENABLE="$(yaml '.redmine.enabled' "global" 1)"
+    REDMINE_PROJECT_ID="$(yaml .redmine.project_id "global")"
+    REDMINE_TRACKER_ID="$(yaml .redmine.tracker_id "global")"
+    REDMINE_PRIORITY_ID="$(yaml .redmine.priority_id "global")"
+    REDMINE_STATUS_ID="$(yaml .redmine.status_id "global")"
+    REDMINE_STATUS_ID_CLOSED="$(yaml .redmine.status_id_closed "global")"
 }
 
 function create_tmp_dir() {
