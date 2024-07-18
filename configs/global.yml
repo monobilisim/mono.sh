@@ -2,6 +2,7 @@ identifier: test
 
 alarm:
   enabled: true
+  interval: 3
   webhook_urls:
     - example.com
     - example2.com

@@ -98,7 +98,7 @@ function parse_common() {
     readarray -t ALARM_WEBHOOK_URLS < <(yaml .alarm.webhook_urls[] "global")
     IDENTIFIER="$(yaml .identifier "global" "$(hostname)")"
     SEND_ALARM="$(yaml '.send_alarm' "global" 1)"
-    ALARM_INTERVAL="$(yaml .alarm_interval "global" 3)"
+    ALARM_INTERVAL="$(yaml .alarm.interval "global" 3)"
 
     ## Bot
     SEND_DM_ALARM="$(yaml '.alarm.bot.enabled' "global" 0)"
