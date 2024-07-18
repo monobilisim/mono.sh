@@ -42,7 +42,7 @@ function yaml() {
         exit 1
     fi
 
-    OUTPUT=$(yq -r "$1" "$CONFIG_PATH"/"$CONFIG_PATH_DATA")
+    OUTPUT=$(yq -r "$1" "$CONFIG_PATH"/"$CONFIG_PATH_DATA" 2> /dev/null)
 
     case $OUTPUT in
     null)
