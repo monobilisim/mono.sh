@@ -117,7 +117,7 @@ function check_active_connections() {
         if [[ $difference -ge $increase ]]; then
             write_active_connections
             if [ -f "$file" ]; then
-                alarm "[PostgreSQL - $IDENTIFIER] [:red_circle:] Number of Active Connections has passed $((CONN_LIMIT_PERCENT + (increase * 10)))% - It is now $used_conn ($used_percentage%)"
+                alarm "[PGSQL Health - $IDENTIFIER] [:red_circle:] Number of Active Connections has passed $((CONN_LIMIT_PERCENT + (increase * 10)))% - It is now $used_conn ($used_percentage%)"
             fi
             increase=$((difference + 1))
         fi
