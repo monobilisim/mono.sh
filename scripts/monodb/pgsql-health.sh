@@ -144,8 +144,8 @@ function check_running_queries() {
         alarm_check_down "query_limit" "Number of active queries is $queries/$QUERY_LIMIT" "active_queries"
         print_colour "Number of Active Queries" "$queries/$QUERY_LIMIT" "error"
     else
-        alarm_check_up "query_limit" "Number of active queries is $queries/$QUERY_LIMIT" "active_queries"
         print_colour "Number of Active Queries" "$queries/$QUERY_LIMIT"
+        alarm_check_up "query_limit" "Number of active queries is $queries/$QUERY_LIMIT" "active_queries"
     fi
 }
 
