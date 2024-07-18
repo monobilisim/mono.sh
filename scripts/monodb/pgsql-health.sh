@@ -30,6 +30,8 @@ function parse_config_pgsql() {
 
     SEND_ALARM=$(yaml .postgres.alarm.enabled $CONFIG_PATH_MONODB "$SEND_ALARM")
 
+    LEADER_SWICH_HOOK=$(yaml .postgres.leader_switch_hook $CONFIG_PATH_MONODB "")
+
     if [ -z "$PATRONI_API" ] && [ -f /etc/patroni/patroni.yml ]; then
         PATRONI_API="$(yq -r .restapi.listen /etc/patroni/patroni.yml)"
     fi

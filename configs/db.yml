@@ -5,6 +5,7 @@ postgres:
     conn_percent: 70
   alarm:
     enabled: true
+  leader_switch_hook: "echo 'leader switch'"
 
 mysql:
   process_limit: 50
