@@ -8,6 +8,7 @@
 | [mysql-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/mysql-health.sh) | Checks the status of MySQL and MySQL cluster |
 | [pgsql-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/pgsql-health.sh) | Checks the status of PostgreSQL and Patroni cluster |
 | [monofon-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/monofon-health.sh) | Checks the status of monofon and related services |
+| [rename_agent.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/rename_agent.sh) | Rename a agent in Asterisk |
 | [k8s-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/k8s-health.sh) | Check the health of the mono-k8s cluster |
 | [k8s-s3-uploader.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/k8s-s3-uploader.sh) | Upload K8s resource logs to S3 bucket |
 | [caddy-common.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/caddy-common.sh) | Common functions for Caddy scripts |
