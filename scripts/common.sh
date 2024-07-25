@@ -6,10 +6,13 @@
 
 CONFIG_PATH=/etc/mono.sh
 TMP_PATH=/tmp/mono.sh
-RED_FG=$(tput setaf 1)
-GREEN_FG=$(tput setaf 2)
-BLUE_FG=$(tput setaf 4)
-RESET=$(tput sgr0)
+
+if [[ -z "$TERM" ]]; then
+    RED_FG=$(tput setaf 1)
+    GREEN_FG=$(tput setaf 2)
+    BLUE_FG=$(tput setaf 4)
+    RESET=$(tput sgr0)
+fi
 
 export TMP_PATH_SCRIPT="$TMP_PATH"/"$SCRIPT_NAME"
 
