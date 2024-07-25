@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 ###~ description: Common functions for Caddy scripts
+#shellcheck disable=SC2034
 
 #https://stackoverflow.com/questions/4774054/reliable-way-for-a-bash-script-to-get-the-full-path-to-itself
 SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit ; pwd -P )"

@@ -54,7 +54,7 @@ function check_process_count() {
     processlist_count=$(/usr/bin/mysqladmin processlist | grep -vc 'show processlist')
     file="$TMP_PATH_SCRIPT/processlist.txt"
     if [ -f "$file" ]; then
-        increase=$(cat $file)
+        increase=$(cat "$file")
     else
         increase=1
     fi
@@ -62,7 +62,7 @@ function check_process_count() {
     if [[ "$processlist_count" -lt "$PROCESS_LIMIT" ]]; then
         alarm_check_up "no_processes" "Number of processes is below limit: $processlist_count/$PROCESS_LIMIT" "process"
         print_colour "Number of Processes" "$processlist_count/$PROCESS_LIMIT"
-        rm -f $file
+        rm -f "$file"
     else
         alarm_check_down "no_processes" "Number of processes is above limit: $processlist_count/$PROCESS_LIMIT" "process"
         print_colour "Number of Processes" "$processlist_count/$PROCESS_LIMIT" "error"
@@ -74,7 +74,7 @@ function check_process_count() {
             fi
             increase=$((difference + 1))
         fi
-        echo "$increase" >$file
+        echo "$increase" >"$file"
     fi
 
 }

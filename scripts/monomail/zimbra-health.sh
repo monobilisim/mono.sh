@@ -3,7 +3,9 @@
 
 VERSION=v1.0.0
 
+#shellcheck disable=SC2034
 SCRIPT_NAME="zimbra-health"
+#shellcheck disable=SC2034
 SCRIPT_NAME_PRETTY="Zimbra Health"
 
 [[ "$1" == '-v' ]] || [[ "$1" == '--version' ]] && {
@@ -14,6 +16,7 @@ SCRIPT_NAME_PRETTY="Zimbra Health"
 # https://stackoverflow.com/questions/4774054/reliable-way-for-a-bash-script-to-get-the-full-path-to-itself
 SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit ; pwd -P )"
 
+#shellcheck disable=SC1091
 . "$SCRIPTPATH"/common.sh
 
 create_tmp_dir
@@ -34,32 +37,32 @@ parse_config_zimbra
 
 RESTART_COUNTER=0
 
-ZIMBRA_SERVICES=(
-    "amavis:zmamavisdctl"
-    "antispam:zmamavisdctl"
-    "antivirus:zmclamdctl:zmfreshclamctl"
-    "cbpolicyd:zmcbpolicydctl"
-    "dnscache:zmdnscachectl"
-    "ldap:ldap"
-    "logger:zmloggerctl"
-    "mailbox:zmmailboxdctl"
-    "memcached:zmmemcachedctl"
-    "mta:zmmtactl:zmsaslauthdctl"
-    "opendkim:zmopendkimctl"
-    "proxy:zmproxyctl"
-    "service webapp:zmmailboxdctl"
-    "snmp:zmswatch"
-    "spell:zmspellctl:zmapachectl"
-    "stats:zmstatctl"
-    "zimbra webapp:zmmailboxdctl"
-    "zimbraAdmin webapp:zmmailboxdctl"
-    "zimlet webapp:zmmailboxdctl"
-    "zmconfigd:zmconfigdctl"
-)
-for i in "${ZIMBRA_SERVICES[@]}"; do
-    zimbra_service_name=$(echo $i | cut -d \: -f1)
-    zimbra_service_ctl=($(echo $i | cut -d\: -f2- | sed 's/:/ /g'))
-done
+#ZIMBRA_SERVICES=(
+#    "amavis:zmamavisdctl"
+#    "antispam:zmamavisdctl"
+#    "antivirus:zmclamdctl:zmfreshclamctl"
+#    "cbpolicyd:zmcbpolicydctl"
+#    "dnscache:zmdnscachectl"
+#    "ldap:ldap"
+#    "logger:zmloggerctl"
+#    "mailbox:zmmailboxdctl"
+#    "memcached:zmmemcachedctl"
+#    "mta:zmmtactl:zmsaslauthdctl"
+#    "opendkim:zmopendkimctl"
+#    "proxy:zmproxyctl"
+#    "service webapp:zmmailboxdctl"
+#    "snmp:zmswatch"
+#    "spell:zmspellctl:zmapachectl"
+#    "stats:zmstatctl"
+#    "zimbra webapp:zmmailboxdctl"
+#    "zimbraAdmin webapp:zmmailboxdctl"
+#    "zimlet webapp:zmmailboxdctl"
+#    "zmconfigd:zmconfigdctl"
+#)
+#for i in "${ZIMBRA_SERVICES[@]}"; do
+#    zimbra_service_name=$(echo "$i" | cut -d \: -f1)
+#    zimbra_service_ctl=($(echo "$i" | cut -d\: -f2- | sed 's/:/ /g'))
+#done
 
 function check_ip_access() {
     echo_status "Access through IP"
@@ -71,7 +74,7 @@ function check_ip_access() {
         ZIMBRA_PATH='/opt/zextras'
         PRODUCT_NAME='carbonio'
     }
-    [[ ! -n $ZIMBRA_PATH ]] && {
+    [[ -z $ZIMBRA_PATH ]] && {
         echo "Zimbra not found in /opt, aborting..."
         exit 1
     }
@@ -87,8 +90,8 @@ function check_ip_access() {
         echo "File \"$templatefile\" not found, aborting..."
         exit 1
     }
-    [[ -e "$ZIMBRA_PATH/conf/nginx/external_ip.txt" ]] && ipaddress="$(cat $ZIMBRA_PATH/conf/nginx/external_ip.txt)" || ipaddress="$(curl -fsSL ifconfig.co)"
-    [[ ! -n "$(echo $ipaddress | grep -Pzi '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | tr '\0' '\n')" ]] && {
+    [[ -e "$ZIMBRA_PATH/conf/nginx/external_ip.txt" ]] && ipaddress="$(cat "$ZIMBRA_PATH"/conf/nginx/external_ip.txt)" || ipaddress="$(curl -fsSL ifconfig.co)"
+    [[ -z "$(echo "$ipaddress" | grep -Pzi '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | tr '\0' '\n')" ]] && {
         echo "IP address error, aborting..."
         exit 1
     }
@@ -107,9 +110,9 @@ server {
 }"
 
     #~ check block from templatefile
-    if [[ -z $(grep -Pzio "$regexpattern" $templatefile | tr '\0' '\n') ]]; then
+    if [[ -z $(grep -Pzio "$regexpattern" "$templatefile" | tr '\0' '\n') ]]; then
         echo "Adding proxy control block in $templatefile file..."
-        echo -e "$proxyblock" >>$templatefile
+        echo -e "$proxyblock" >>"$templatefile"
         echo "Added proxy control block in $templatefile file..."
     fi
     ip=$(wget -qO- ifconfig.me/ip)
@@ -139,14 +142,14 @@ function check_zimbra_services() {
         service_name=$(echo "$service" | awk '{NF--; print}')
         if [[ $is_active =~ [A-Z] ]]; then
             if [ "${is_active,,}" != 'running' ]; then
-                [ $RESTART_COUNTER -gt $RESTART_LIMIT ] && {
+                [ $RESTART_COUNTER -gt "$RESTART_LIMIT" ] && {
                     alarm_check_down "$service_name" "Couldn't restart stopped services in $((RESTART_LIMIT + 1)) tries" "service"
                     echo "${RED_FG}Couldn't restart stopped services in $((RESTART_LIMIT + 1)) tries${RESET}"
                     return
                 }
                 print_colour "$service_name" "$is_active" "error"
                 alarm_check_down "$service_name" "Service: $service_name is not running" "service"
-                if [ $RESTART == 1 ]; then
+                if [ "$RESTART" == 1 ]; then
                     # i=$(echo "${ZIMBRA_SERVICES[@]}" | sed 's/ /\n/g' | grep "$service_name:")
                     # zimbra_service_name=$(echo $i | cut -d \: -f1)
                     # zimbra_service_ctl=($(echo $i | cut -d\: -f2- | sed 's/:/\n/g'))
@@ -219,7 +222,7 @@ function queued_messages() {
 
 
 function check_install() {
-    mapfile -t ps_out < <(ps aux | grep install.sh)
+    mapfile -t ps_out < <(pgrep install.sh)
     if [ ${#ps_out[@]} -gt 1 ]; then
         echo install.sh is working
         echo Exiting...
