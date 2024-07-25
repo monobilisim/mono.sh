@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+###~ description: This script is used to alert whenever a ssh session is started
 
 #~ for debugging
 set -xe
