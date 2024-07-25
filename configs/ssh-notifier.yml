@@ -1,0 +1,17 @@
+ssh_post_url: "https://example.com"
+ssh_post_url_backup: "https://backup.example.com"
+
+exclude:
+  domains:
+    - "example.com"
+    - "backup.example.com"
+  ips:
+    - "192.168.1.1"
+    - "192.168.1.21"
+  users:
+    - "root"
+    - "admin"
+
+server:
+  os_type: "GENERIC"
+  address: "123.456.789.0"
