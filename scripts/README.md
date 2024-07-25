@@ -2,6 +2,7 @@
 |--|--|
 | [common.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/common.sh) | Common functions for all scripts |
 | [os-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/os-health.sh) | This script is used to check the health of the server |
+| [ssh-notifier.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/ssh-notifier.sh) | This script is used to alert whenever a ssh session is started |
 | [wppconnect-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/wppconnect-health.sh) | Check the status of WPPConnect sessions |
 | [mysql-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/mysql-health.sh) | Checks the status of MySQL and MySQL cluster |
 | [pgsql-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/pgsql-health.sh) | Checks the status of PostgreSQL and Patroni cluster |
