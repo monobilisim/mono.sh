@@ -1,7 +1,18 @@
-#/bin/bash
+#!/usr/bin/env bash
 ###~ description: Rename a agent in Asterisk
-[[ ! -n "$1" ]] && { echo "User ID is not defined..."; exit 1; } || { EXTEN=$1; };
-[[ ! -n "$2" ]] && { echo "Username is not defined..."; exit 1; } || { NAME="$2"; };
+if [[ -z "$1" ]]; then
+    echo "User ID is not defined..."
+    exit 1
+else
+    EXTEN=$1
+fi
+
+if [[ -z "$2" ]]; then
+    echo "Username is not defined..."
+    exit 1
+else 
+     NAME="$2"
+fi
 
 OLD_NAME="$(mysql -e "SELECT label FROM asterisk.fop2buttons WHERE exten = $EXTEN;" | sed '1d')"
 
@@ -20,7 +31,7 @@ mysql -e "SELECT name, queue FROM qstats.monofon_agent WHERE extension = $EXTEN 
 asterisk -rx "queue show" | grep "Local/$EXTEN@"
 echo "---------------------------------------"
 echo "Press Enter to continue..."
-read
+read -r
 
 asterisk -rx "database get AMPUSER/$EXTEN cidname"
 asterisk -rx "database put AMPUSER/$EXTEN cidname \"$NAME\""
@@ -46,11 +57,11 @@ else
         amportal a r
 fi
 
-queue_list=($(asterisk -rx "queue show" | grep strategy | awk '{print $1}'))
-for queue in ${queue_list[@]}; do
+mapfile -t queue_list < <(asterisk -rx "queue show" | grep strategy | awk '{print $1}') 
+for queue in "${queue_list[@]}"; do
         member=$(asterisk -rx "queue show $queue" | grep "Local/$EXTEN@" | perl -ne '/\((\S+)/ && print "$1\n"')
         state_interface=$(asterisk -rx "queue show $queue" | grep "Local/$EXTEN@" | perl -ne '/from (\S+)\)/ && print "$1\n"')
-        if [[ ! -z "$member" ]]; then
+        if [[ -n "$member" ]]; then
                 echo "User $EXTEN is in queue $queue"
                 asterisk -rx "queue remove member $member from $queue"
                 asterisk -rx "queue add member $member to $queue penalty 0 as \"$NAME\" state_interface $state_interface"

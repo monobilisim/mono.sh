@@ -344,10 +344,10 @@ function rewrite_monofon_data() {
             fi
         fi
 
-        if [ -f $file ]; then
+        if [ -f "$file" ]; then
             # row_count=$(cat $file)
             #alarm "Monofon verilerin yeniden yazılması tamamlandı. Satır sayısı: $row_count"
-            rm $file
+            rm "$file"
         fi
     fi
 }
@@ -356,8 +356,8 @@ function check_data_file() {
     echo_status "Checking data.json"
     data_timestamp="$TMP_PATH_SCRIPT/monofon_data-json.txt"
     data_file="/var/www/html/monofon-pano-yeni/data/data.json"
-    if [ -f $data_timestamp ]; then
-        before=$(cat $data_timestamp)
+    if [ -f "$data_timestamp" ]; then
+        before=$(cat "$data_timestamp")
         now=$(stat -c %y $data_file)
         if [ "$before" == "$now" ]; then
             alarm_check_down "data-json" "No changes made to file: $data_file"
@@ -366,9 +366,9 @@ function check_data_file() {
             alarm_check_up "data-json" "Data file updated. File: $data_file"
             print_colour "data.json" "updated"
         fi
-        echo "$now" >$data_timestamp
+        echo "$now" >"$data_timestamp"
     fi
-    stat -c %y $data_file >$data_timestamp
+    stat -c %y $data_file >"$data_timestamp"
 }
 
 function main() {
