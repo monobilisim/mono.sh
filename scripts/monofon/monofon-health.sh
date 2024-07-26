@@ -27,6 +27,7 @@ parse_config_monofon() {
     export REQUIRED=true
 
     readarray -t IGNORED_SERVICES < <(yaml .ignored_services[] $CONFIG_PATH_MONOFON)
+    readarray -t IGNORED_TRUNKS < <(yaml .ignored_trunks[] $CONFIG_PATH_MONOFON)
     AUTO_RESTART=$(yaml .restart.auto $CONFIG_PATH_MONOFON)
     CONCURRENT_CALLS=$(yaml .concurrent_calls $CONFIG_PATH_MONOFON)
     #TRUNK_CHECK_INTERVAL=$(yaml .trunk_check_interval $CONFIG_PATH_MONOFON 5)
@@ -252,6 +253,9 @@ function check_trunks() {
     for trunk in $trunk_list; do
         trunk_status=$(echo "$trunk" | awk '{print $6}')
         trunk_name=$(echo "$trunk" | awk '{print $1}')
+        if containsElement "$trunk_name" "${IGNORED_TRUNKS[@]}"; then
+            continue
+        fi
         if [ "$trunk_status" != "OK" ]; then
             print_colour "$trunk_name" "${trunk_status}" "error"
             alarm_check_down "$trunk_name" "Trunk $trunk_name is ${trunk_status} at $IDENTIFIER" "trunk"

@@ -1,6 +1,9 @@
 #ignored_services:
 #  - asterniclog 
 
+#ignored_trunks:
+#  - trunk1 
+
 restart:
   auto: true
   attempt_interval: 15 # in minutes
