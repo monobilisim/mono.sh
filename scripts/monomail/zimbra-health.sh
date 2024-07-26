@@ -220,7 +220,7 @@ function queued_messages() {
     else
         queue=$(/opt/zextras/common/sbin/mailq | grep -c "^[A-F0-9]")
     fi
-    if [ "$queue" -le "$QUEUE_LIMIT" ]; then
+    if [[ $queue -le $QUEUE_LIMIT ]]; then
         alarm_check_up "queued" "Number of queued messages is below limit - $queue/$QUEUE_LIMIT" "queue"
         print_colour "Number of queued messages" "$queue"
     else
