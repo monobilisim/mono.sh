@@ -7,7 +7,7 @@
 CONFIG_PATH=/etc/mono.sh
 TMP_PATH=/tmp/mono.sh
 
-if [[ -z "$TERM" ]]; then
+if [[ -n "$TERM" ]]; then
     RED_FG=$(tput setaf 1)
     GREEN_FG=$(tput setaf 2)
     BLUE_FG=$(tput setaf 4)
