@@ -124,9 +124,9 @@ function restart_asterisk() {
         OLDIFS=$IFS
         IFS=$'\n'
         if [ -z "$(command -v supervisorctl)" ]; then
-            mono_services=$(supervisorctl status 2>/dev/null | grep monofon | grep RUNNING)
-        else
             mono_services=$(supervisord ctl status | grep monofon | grep -i RUNNING)
+        else
+            mono_services=$(supervisorctl status 2>/dev/null | grep monofon | grep RUNNING)
         fi
         active_services=$(echo "$mono_services" | awk '{print $service}')
         for service in $active_services; do
@@ -186,9 +186,9 @@ function check_monofon_services() {
         mono_services=$(supervisord ctl status | grep monofon)
     else
         if supervisorctl status | grep -q "unix://"; then
-            mono_services=$(supervisorctl status 2>/dev/null | grep monofon)
-        else
             mono_services=$(supervisorctl -c /etc/supervisord.conf status 2>/dev/null | grep monofon)
+        else
+            mono_services=$(supervisorctl status 2>/dev/null | grep monofon)
         fi
     fi
 
