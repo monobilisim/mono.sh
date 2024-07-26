@@ -172,7 +172,7 @@ function cluster_status() {
     mapfile -t cluster_roles < <(echo "$output" | jq -r '.members[] | .role')
     mapfile -t cluster_states < <(curl -s "$CLUSTER_URL" | jq -r '.members[] | .state')
     name=$(yq -r .name /etc/patroni/patroni.yml)
-    this_node=$(curl -s "$CLUSTER_URL" | jq -r --arg name "$name" '.members[] | select(.name==$name) | .role')
+    this_node=$(curl -s "$CLUSTER_URL" | jq -r --arg name "$name" '.members[] | select(.name==$name) | .role') 
     print_colour "This Node" "$this_node"
 
     printf '\n'
@@ -181,9 +181,8 @@ function cluster_status() {
     for cluster in "${cluster_names[@]}"; do
         print_colour "$cluster" "${cluster_roles[$i]}"
         if [ -f "$TMP_PATH_SCRIPT"/raw_output.json ]; then
-            old_role="$(jq -r '.members['"$i"'] | .role' <"$TMP_PATH_SCRIPT"/raw_output.json)"
-            if [ "${cluster_roles[$i]}" != "$old_role" ] &&
-                [ "$cluster" == "$(jq -r '.members['"$i"'] | .name' <"$TMP_PATH_SCRIPT"/raw_output.json)" ]; then
+            old_role="$(jq -r --arg cluster "$cluster" '.members[] | select(.name==$cluster) | .role' <"$TMP_PATH_SCRIPT"/raw_output.json)"
+            if [ "${cluster_roles[$i]}" != "$old_role" ]; then
                 echo "  Role of $cluster has changed!"
                 print_colour "  Old Role of $cluster" "$old_role" "error"
                 printf '\n'
@@ -202,7 +201,6 @@ function cluster_status() {
                         fi
                     fi
                 fi
-
             fi
         fi
         i=$((i + 1))
