@@ -14,7 +14,10 @@ SCRIPT_NAME_PRETTY="Zimbra Health"
 }
 
 # https://stackoverflow.com/questions/4774054/reliable-way-for-a-bash-script-to-get-the-full-path-to-itself
-SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit ; pwd -P )"
+SCRIPTPATH="$(
+    cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit
+    pwd -P
+)"
 
 #shellcheck disable=SC1091
 . "$SCRIPTPATH"/common.sh
@@ -29,7 +32,7 @@ parse_config_zimbra() {
     RESTART_LIMIT=$(yaml .zimbra.restart_limit $CONFIG_PATH_ZIMBRA)
     QUEUE_LIMIT=$(yaml .zimbra.queue_limit $CONFIG_PATH_ZIMBRA)
     Z_URL=$(yaml .zimbra.z_url $CONFIG_PATH_ZIMBRA)
-    
+
     SEND_ALARM=$(yaml .alarm.enabled $CONFIG_PATH_ZIMBRA "$SEND_ALARM")
 }
 
@@ -164,7 +167,13 @@ function check_zimbra_services() {
                     # check_zimbra_services
                     # break
 
-                    if ! su - zimbra -c "zmcontrol start"; then
+                    if id "zimbra" &>/dev/null; then
+                        z_user="zimbra"
+                    else
+                        z_user="zextras"
+                    fi
+
+                    if ! su - "$z_user" -c "zmcontrol start"; then
                         RESTART_COUNTER=$((RESTART_COUNTER + 1))
                     fi
                     printf '\n'
@@ -219,7 +228,6 @@ function queued_messages() {
         print_colour "Number of queued messages" "$queue" "error"
     fi
 }
-
 
 function check_install() {
     mapfile -t ps_out < <(pgrep install.sh)
