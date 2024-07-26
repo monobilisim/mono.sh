@@ -124,9 +124,9 @@ function restart_asterisk() {
         OLDIFS=$IFS
         IFS=$'\n'
         if [ -z "$(command -v supervisorctl)" ]; then
-            mono_services=$(supervisord ctl status | grep monofon | grep -i RUNNING)
-        else
             mono_services=$(supervisorctl status 2>/dev/null | grep monofon | grep RUNNING)
+        else
+            mono_services=$(supervisord ctl status | grep monofon | grep -i RUNNING)
         fi
         active_services=$(echo "$mono_services" | awk '{print $service}')
         for service in $active_services; do
@@ -235,7 +235,7 @@ function check_concurrent_calls() {
     echo_status "Checking the number of concurrent calls"
     active_calls=$(asterisk -rx "core show channels" | grep "active calls" | awk '{print $1}')
 
-    if [ "$active_calls" -gt "$CONCURRENT_CALLS" ]; then
+    if [[ $active_calls -gt $CONCURRENT_CALLS ]]; then
         alarm_check_down "active_calls" "Number of active calls at $IDENTIFIER is ${active_calls}" "service"
         print_colour "Number of active calls" "${active_calls}" "error"
     else
