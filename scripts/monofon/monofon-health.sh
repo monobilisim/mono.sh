@@ -12,7 +12,10 @@ SCRIPT_NAME="monofon-health"
 SCRIPT_NAME_PRETTY="Monofon Health Check"
 
 # https://stackoverflow.com/questions/4774054/reliable-way-for-a-bash-script-to-get-the-full-path-to-itself
-SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit ; pwd -P )"
+SCRIPTPATH="$(
+    cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit
+    pwd -P
+)"
 
 #shellcheck disable=SC1091
 . "$SCRIPTPATH"/../common.sh
@@ -28,7 +31,7 @@ parse_config_monofon() {
     CONCURRENT_CALLS=$(yaml .concurrent_calls $CONFIG_PATH_MONOFON)
     #TRUNK_CHECK_INTERVAL=$(yaml .trunk_check_interval $CONFIG_PATH_MONOFON 5)
     RESTART_ATTEMPT_INTERVAL=$(yaml .restart.attempt_interval $CONFIG_PATH_MONOFON)
-    
+
     SEND_ALARM=$(yaml .alarm.enabled $CONFIG_PATH_MONOFON "$SEND_ALARM")
 }
 
@@ -399,7 +402,9 @@ function main() {
     printf '\n'
     check_concurrent_calls
     printf '\n'
-    check_trunks
+    if [[ $(date "+%H") -ge 8 ]] && [[ $(date "+%H") -lt 18 ]]; then
+        check_trunks
+    fi
     printf '\n'
     if [ "$(date "+%H:%M")" == "05:00" ]; then
         check_db
