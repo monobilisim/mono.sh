@@ -20,7 +20,7 @@ export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit ; pwd -P )"
 
 #shellcheck disable=SC1091
-. "$SCRIPTPATH"/common.sh
+. "$SCRIPTPATH"/../common.sh
 
 create_tmp_dir
 

@@ -20,7 +20,7 @@ SCRIPTPATH="$(
 )"
 
 #shellcheck disable=SC1091
-. "$SCRIPTPATH"/common.sh
+. "$SCRIPTPATH"/../common.sh
 
 create_tmp_dir
 

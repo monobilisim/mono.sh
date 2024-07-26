@@ -18,7 +18,7 @@ SCRIPT_NAME_PRETTY="PMG Health"
 SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit ; pwd -P )"
 
 #shellcheck disable=SC1091
-. "$SCRIPTPATH"/common.sh
+. "$SCRIPTPATH"/../common.sh
 
 create_tmp_dir
 
