@@ -145,13 +145,13 @@ function check_zimbra_services() {
         service_name=$(echo "$service" | awk '{NF--; print}')
         if [[ $is_active =~ [A-Z] ]]; then
             if [ "${is_active,,}" != 'running' ]; then
-                [ $RESTART_COUNTER -gt "$RESTART_LIMIT" ] && {
-                    alarm_check_down "$service_name" "Couldn't restart stopped services in $((RESTART_LIMIT + 1)) tries" "service"
+                [[ $RESTART_COUNTER -gt "$RESTART_LIMIT" ]] && {
+                    alarm_check_down "$service_name" "Couldn't restart stopped services in $((RESTART_LIMIT + 1)) tries"
                     echo "${RED_FG}Couldn't restart stopped services in $((RESTART_LIMIT + 1)) tries${RESET}"
                     return
                 }
                 print_colour "$service_name" "$is_active" "error"
-                alarm_check_down "$service_name" "Service: $service_name is not running" "service"
+                alarm_check_down "$service_name" "Service: $service_name is not running"
                 if [ "$RESTART" == 1 ]; then
                     # i=$(echo "${ZIMBRA_SERVICES[@]}" | sed 's/ /\n/g' | grep "$service_name:")
                     # zimbra_service_name=$(echo $i | cut -d \: -f1)
@@ -173,9 +173,9 @@ function check_zimbra_services() {
                         z_user="zextras"
                     fi
 
-                    if ! su - "$z_user" -c "zmcontrol start"; then
-                        RESTART_COUNTER=$((RESTART_COUNTER + 1))
-                    fi
+                    su - "$z_user" -c "zmcontrol start"
+                    RESTART_COUNTER=$((RESTART_COUNTER + 1))
+
                     printf '\n'
                     check_zimbra_services
                     break
@@ -239,7 +239,7 @@ function check_install() {
 }
 
 function main() {
-    pid_file="$(create_pid)"
+    create_pid
     printf '\n'
     echo "Zimbra Health $VERSION - $(date)"
     printf '\n'
@@ -259,4 +259,4 @@ function main() {
 
 main
 
-rm "${pid_file}"
+remove_pid

@@ -268,8 +268,10 @@ function create_pid() {
     fi
 
     echo $$ >"${pidfile}"
+}
 
-    echo "$pidfile"
+function remove_pid() {
+    rm -f /var/run/"$SCRIPT_NAME".sh.pid
 }
 
 function main() {

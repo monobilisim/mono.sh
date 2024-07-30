@@ -160,7 +160,7 @@ function check_db() {
 
 function main() {
     parse_config_mysql
-    pid_file=$(create_pid)
+    create_pid
 
     printf '\n'
     echo  MySQL Health "$VERSION" - "$(date)"  
@@ -183,4 +183,4 @@ function main() {
 
 main
 
-rm "${pid_file}"
+remove_pid

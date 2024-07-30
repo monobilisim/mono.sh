@@ -379,7 +379,7 @@ function check_data_file() {
 }
 
 function main() {
-    pid_file="$(create_pid)"
+    create_pid
     is_old=0
     # Checks if systemctl is present, if not it uses service instead
     if [ -z "$(command -v systemctl)" ]; then
@@ -432,4 +432,4 @@ function main() {
 
 main
 
-rm "${pid_file}"
+remove_pid

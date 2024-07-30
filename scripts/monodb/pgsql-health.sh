@@ -224,7 +224,7 @@ function cluster_status() {
 
 function main() {
     parse_config_pgsql
-    pid_file=$(create_pid)
+    create_pid
 
     printf '\n'
     echo "Monodb PostgreSQL Health $VERSION - $(date)"
@@ -244,4 +244,4 @@ function main() {
 
 main
 
-rm "${pid_file}"
+remove_pid

@@ -72,7 +72,7 @@ function queued_messages() {
 }
 
 function main() {
-    pid_file="$(create_pid)"
+    create_pid
     printf '\n'
     echo "PMG Health $VERSION - $(date)"
     printf '\n'
@@ -85,4 +85,4 @@ function main() {
 
 main
 
-rm "${pid_file}"
+remove_pid

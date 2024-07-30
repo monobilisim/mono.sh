@@ -103,7 +103,7 @@ function upload_to_s3() {
 }
 
 function main() {
-    pid_file="$(create_pid)"
+    create_pid
     printf '\n'
     echo "MonoK8s S3 Uploader $VERSION - $(date)"
     printf '\n'
@@ -112,4 +112,4 @@ function main() {
 
 main
 
-rm "${pid_file}"
+remove_pid

@@ -172,7 +172,7 @@ fnMessageHeld() {
 }
 
 main() {
-    pid_file="$(create_pid)"
+    create_pid
     fnServices
     printf '\n'
     fnMySQL
@@ -187,4 +187,4 @@ main() {
 
 main
 
-rm "${pid_file}"
+remove_pid

@@ -433,7 +433,7 @@ validate() {
 
 #~ main
 main() {
-    pid_file=$(create_pid)
+    create_pid
 
     if [ "$1" == "--debug" ] || [ "$1" == "-d" ]; then
         set -x
@@ -495,4 +495,4 @@ main() {
 
 main "$@"
 
-rm "${pid_file}"
+remove_pid
