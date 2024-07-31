@@ -7,7 +7,7 @@
 CONFIG_PATH=/etc/mono.sh
 TMP_PATH=/tmp/mono.sh
 
-if [[ "$NO_COLORS" != "1" || "$TERM" != "dumb" ]]; then
+if [[ "$NO_COLORS" != "1" && "$TERM" != "dumb" && -n $TERM ]]; then
     RED_FG=$(tput setaf 1) 
     GREEN_FG=$(tput setaf 2)
     BLUE_FG=$(tput setaf 4)
@@ -275,6 +275,7 @@ function remove_pid() {
 }
 
 function main() {
+    cron_mode "$ENABLE_CRON"
     check_yq
     parse_common
 }
