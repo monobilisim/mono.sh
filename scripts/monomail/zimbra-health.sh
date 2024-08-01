@@ -195,7 +195,7 @@ function check_zimbra_services() {
                 # should_restart=1
             else
                 print_colour "$service_name" "$is_active"
-                alarm_check_up "$service_name" "Service: $service_name started running" "service"
+                alarm_check_up "$service_name" "Service: $service_name started running"
             fi
         fi
     done
