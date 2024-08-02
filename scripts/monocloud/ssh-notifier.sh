@@ -174,6 +174,7 @@ notify_and_save() {
 			files=$(shopt -s nullglob dotglob; echo "$f"/*_status.txt)
 			if ((${#files})); then
 				curl -fsSL -X POST -H "Content-Type: application/json" -d "{\"text\": \"$message\"}" "$WEBHOOK_URL"
+                break
 			fi
 		fi
 	done
