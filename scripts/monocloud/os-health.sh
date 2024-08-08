@@ -197,8 +197,8 @@ check_system_load_and_ram() {
         message="RAM usage limit went below $RAM_LIMIT (Current: $ram_usage%)"
         alarm_check_up "ram" "$message" "system"
     else
-        message="RAM usage limit has exceeded $RAM_LIMIT (Current: $ram_usage%)"
         alarm_check_down "ram" "$message" "system"
+        message="RAM usage limit has exceeded $RAM_LIMIT (Current: $ram_usage%)"
     fi
 
     [ ! -d "$TMP_PATH_SCRIPT/checks" ] && mkdir -p "$TMP_PATH_SCRIPT"/checks
