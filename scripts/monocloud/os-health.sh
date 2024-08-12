@@ -367,10 +367,9 @@ report_status() {
             message+="$table\n\n"
 
             if [ "${REDMINE_ENABLE:-1}" == "1" ]; then
-                if [[ ! -f "$TMP_PATH_SCRIPT/redmine_issue_id" ]]; then
+                if [[ ! -f "$TMP_PATH_SCRIPT/redmine_issue_id" || "$(cat $TMP_PATH_SCRIPT/redmine_issue_id)" == "" ]]; then
 
                     curl -fsSL -X POST -H "Content-Type: application/json" -H "X-Redmine-API-Key: $REDMINE_API_KEY" -d "{\"issue\": { \"project_id\": \"${REDMINE_PROJECT_ID:-$(echo "$IDENTIFIER" | cut -d '-' -f 1)}\", \"tracker_id\": \"${REDMINE_TRACKER_ID:-7}\", \"subject\": \"$alarm_hostname - Diskteki bir (ya da birden fazla) bölümün doluluk seviyesi %${PART_USE_LIMIT} üstüne çıktı\", \"description\": \"$table_md\", \"status_id\": \"${REDMINE_STATUS_ID:-open}\", \"priority_id\": \"${REDMINE_PRIORITY_ID:-5}\" }}" "$REDMINE_URL"/issues.json -o "$TMP_PATH_SCRIPT"/redmine.json
-                    echo "$"
                     jq -r '.issue.id' "$TMP_PATH_SCRIPT"/redmine.json >"$TMP_PATH_SCRIPT"/redmine_issue_id
                     rm -f "$TMP_PATH_SCRIPT"/redmine.json
                 elif [[ "$REDMINE_SEND_UPDATE" == "1" ]]; then
