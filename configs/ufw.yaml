@@ -1,0 +1,10 @@
+# UFW rule lists
+# Eg;
+#
+# 1.1.1.1 #This part is a comment that will be added in the rule
+# 2.2.2.2 #Comment
+# 3.3.3.3 #test
+#
+rule_urls:
+  - https://example.com/test.txt
+
