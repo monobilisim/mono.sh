@@ -1,7 +1,6 @@
 | Script | Description |
 |--|--|
 | [common.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/common.sh) | Common functions for all scripts |
-| [os-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/os-health.sh) | This script is used to check the health of the server |
 | [shutdown-notifier.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/shutdown-notifier.sh) | This script sends an alarm to a channel when the server is up or shutting down. |
 | [ssh-notifier.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/ssh-notifier.sh) | This script is used to alert whenever a ssh session is started |
 | [ufw-applier.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/ufw-applier.sh) | This script is used to apply ufw rules to the system |
