@@ -1,10 +1,16 @@
 # UFW rule lists
-# Eg;
+# Example of a rule list file
 #
 # 1.1.1.1 #This part is a comment that will be added in the rule
 # 2.2.2.2 #Comment
 # 3.3.3.3 #test
 #
+# rule_urls usage;
+#
+# URL Protocol/all Port/all comment
+#
 rule_urls:
-  - https://example.com/test.txt
-
+  - https://example.com/test.txt tcp 80 this is a test comment
+  - https://example.com/test2.txt udp 53 this is a test comment
+  - https://example.com/test3.txt all 443 this is a test comment
+  - https://example.com/test4.txt all all this is another test comment
