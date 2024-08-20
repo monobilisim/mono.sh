@@ -132,7 +132,7 @@ main() {
             SUM_ORIG=$(sha256sum "/etc/mono.sh/ufw-applier/$rule_file" | awk '{print $1}')
             SUM_PORTFILE=$(cat "/etc/mono.sh/ufw-applier-ruleset/$rule_file")
 
-            if [[ $(sha256sum "$TMP_PATH_SCRIPT/$rule_file-tmp" | awk '{print $1}') != "$SUM_ORIG" ]] || [[ "$SUM_PORTFILE" != "$rule_protocol $rule_port" ]]; then
+            if [[ $(sha256sum "$TMP_PATH_SCRIPT/$rule_file-tmp" | awk '{print $1}') != "$SUM_ORIG" && "$SUM_PORTFILE" != "$rule_protocol $rule_port" ]]; then
                 echo "Sum mismatch, updating $rule_file"
                 remove_file "/etc/mono.sh/ufw-applier/$rule_file"
                 mv "$TMP_PATH_SCRIPT/$rule_file-tmp" "/etc/mono.sh/ufw-applier/$rule_file"
