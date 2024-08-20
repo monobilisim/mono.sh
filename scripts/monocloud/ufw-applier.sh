@@ -29,15 +29,15 @@ function remove_file() {
     port=$(awk '{print $2}' < /etc/mono.sh/ufw-applier-ruleset/"$(basename "$1")")
     description=$(cut -f4- -d ' ' < /etc/mono.sh/ufw-applier-ruleset/"$(basename "$1")")
     echo "Removing old rulefile $1..."
-    while IFS= read -r line; do
+    while IFS=: read -r line; do
         # Get IP address
         ip_address=$(echo "$line" | awk '{print $1}')
-        
+
         # Get the comment
         comment=$(echo "$line" | sed -E 's/^[^#]+#([^#]+).*/\1/' | xargs)
-        
+
         # Generate the command
-        
+
         if [[ "$protocol" == "all" ]]; then
             ufw_command="ufw delete allow from"
         else
@@ -57,7 +57,7 @@ function remove_file() {
         # Display and execute the command
         [[ ! "$NO_CMD_OUT" == 1 ]] && echo "$ufw_command"
         [[ ! "$DRY_RUN" == "1" ]] && eval "$ufw_command"
-    done < "$1"
+    done < <(grep "" "$1")
     echo "Done processing $1"
 }
 
@@ -71,10 +71,10 @@ function apply_file() {
         echo "$2 $3" > /etc/mono.sh/ufw-applier-ruleset/"$(basename "$1")"
     fi
 
-    while IFS= read -r line; do
+    while IFS=: read -r line; do
         # Get IP address
         ip_address=$(echo "$line" | awk '{print $1}')
-       
+
         if [[ "$4" != "default" ]]; then
             # Get the comment
             comment="$4"
@@ -98,11 +98,11 @@ function apply_file() {
             # Generate the command
             ufw_command="$ufw_command $ip_address comment '$comment' to any port $3"
         fi
-        
+
         # Display and execute the command
         [[ ! "$NO_CMD_OUT" == 1 ]] && echo "$ufw_command"
         [[ ! "$DRY_RUN" == "1" ]] && eval "$ufw_command"
-    done < "$1"
+    done < <(grep "" "$1")
     echo "Done processing $1"
 }
 
@@ -152,10 +152,10 @@ main() {
             mv "$TMP_PATH_SCRIPT/$rule_file-tmp" "/etc/mono.sh/ufw-applier/$rule_file"
             apply_file "/etc/mono.sh/ufw-applier/$rule_file" "${rule_protocol:-tcp}" "${rule_port:?no port specified}" "${rule_description:-default}"
         fi
-        
+
         FILES_PROCESSED+=("$rule_file")
     done
-    
+
     echo "Files processed: '${FILES_PROCESSED[*]}'"
 
     for file in /etc/mono.sh/ufw-applier/*; do
