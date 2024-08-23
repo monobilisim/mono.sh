@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 ###~ description: This script is used to apply ufw rules to the system
+set -e
 
 #~ variables
 #shellcheck disable=SC2034
@@ -27,7 +28,7 @@ function parse_config() {
 function remove_file() {
     protocol=$(awk '{print $1}' < /etc/mono.sh/ufw-applier-ruleset/"$(basename "$1")")
     port=$(awk '{print $2}' < /etc/mono.sh/ufw-applier-ruleset/"$(basename "$1")")
-    description=$(cut -f4- -d ' ' < /etc/mono.sh/ufw-applier-ruleset/"$(basename "$1")")
+    description=$(cut -f3- -d ' ' < /etc/mono.sh/ufw-applier-ruleset/"$(basename "$1")")
     echo "Removing old rulefile $1..."
     while IFS=: read -r line; do
         # Get IP address
