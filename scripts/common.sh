@@ -4,7 +4,7 @@
 #shellcheck disable=SC2034
 #shellcheck disable=SC2120
 
-CONFIG_PATH=/etc/mono.sh
+CONFIG_PATH=/etc/mono
 TMP_PATH=/tmp/mono.sh
 
 if [[ "$NO_COLORS" != "1" && "$TERM" != "dumb" && -n $TERM ]]; then
