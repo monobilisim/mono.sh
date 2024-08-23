@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 ###~ description: This script is used to apply ufw rules to the system
-set -e
 
 #~ variables
 #shellcheck disable=SC2034
