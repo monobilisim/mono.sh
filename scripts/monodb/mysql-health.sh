@@ -2,7 +2,7 @@
 ###~ description: Checks the status of MySQL and MySQL cluster
 
 #shellcheck disable=SC2034
-script_version=v2.6.0
+script_version=v2.7.0
 SCRIPT_NAME="mysql-health"
 SCRIPT_NAME_PRETTY="MySQL Health"
 
@@ -12,7 +12,10 @@ SCRIPT_NAME_PRETTY="MySQL Health"
 }
 
 # https://stackoverflow.com/questions/4774054/reliable-way-for-a-bash-script-to-get-the-full-path-to-itself
-SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit ; pwd -P )"
+SCRIPTPATH="$(
+    cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit
+    pwd -P
+)"
 
 #shellcheck disable=SC1091
 . "$SCRIPTPATH"/../common.sh
@@ -66,11 +69,11 @@ function check_process_count() {
     else
         alarm_check_down "no_processes" "Number of processes is above limit: $processlist_count/$PROCESS_LIMIT" "process"
         print_colour "Number of Processes" "$processlist_count/$PROCESS_LIMIT" "error"
-        difference=$(((processlist_count - PROCESS_LIMIT)/10))
+        difference=$(((processlist_count - PROCESS_LIMIT) / 10))
         if [[ $difference -ge $increase ]]; then
             write_processlist
             if [ -f "$file" ]; then
-                alarm "[MySQL - $IDENTIFIER] [:red_circle:] Number of processes surpassed $((PROCESS_LIMIT+(increase*10))): $processlist_count/$PROCESS_LIMIT"
+                alarm "[MySQL - $IDENTIFIER] [:red_circle:] Number of processes surpassed $((PROCESS_LIMIT + (increase * 10))): $processlist_count/$PROCESS_LIMIT"
             fi
             increase=$((difference + 1))
         fi
@@ -85,13 +88,20 @@ function check_cluster_status() {
     no_cluster=$(echo "$cluster_status" | awk '{print $2}')
     if [ "$no_cluster" -eq "$CLUSTER_SIZE" ]; then
         alarm_check_up "cluster_size" "Cluster size is accurate: $no_cluster/$CLUSTER_SIZE"
+        monokit redmine issue close --service "cluster-size" --message "MySQL cluster size is $no_cluster at $IDENTIFIER"
         print_colour "Cluster size" "$no_cluster/$CLUSTER_SIZE"
     elif [ -z "$no_cluster" ]; then
         alarm_check_down "cluster_size" "Couldn't get cluster size: $no_cluster/$CLUSTER_SIZE"
+        monokit redmine issue update --service "cluster-size" --message "Couldn't get cluster size with command: \"mysql -sNe \"SHOW STATUS WHERE Variable_name = 'wsrep_cluster_size';\"\""
         print_colour "Cluster size" "Couln't get" "error"
     else
         alarm_check_down "cluster_size" "Cluster size is not accurate: $no_cluster/$CLUSTER_SIZE"
+        monokit redmine issue update --service "cluster-size" --message "MySQL cluster size is $no_cluster at $IDENTIFIER"
         print_colour "Cluster size" "$no_cluster/$CLUSTER_SIZE" "error"
+    fi
+
+    if [[ "$no_cluster" -eq 1 ]] || [[ "$no_cluster" -gt $CLUSTER_SIZE ]]; then
+        monokit redmine issue create --service "cluster-size" --subject "Cluster size is $no_cluster at $IDENTIFIER" --message "MySQL cluster size is $no_cluster at $IDENTIFIER"
     fi
 }
 
@@ -163,7 +173,7 @@ function main() {
     create_pid
 
     printf '\n'
-    echo  MySQL Health "$VERSION" - "$(date)"  
+    echo MySQL Health "$VERSION" - "$(date)"
     printf '\n'
     select_now
     printf '\n'
