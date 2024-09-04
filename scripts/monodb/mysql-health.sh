@@ -88,20 +88,20 @@ function check_cluster_status() {
     no_cluster=$(echo "$cluster_status" | awk '{print $2}')
     if [ "$no_cluster" -eq "$CLUSTER_SIZE" ]; then
         alarm_check_up "cluster_size" "Cluster size is accurate: $no_cluster/$CLUSTER_SIZE"
-        monokit redmine issue close --service "cluster-size" --message "MySQL cluster size is $no_cluster at $IDENTIFIER"
+        monokit redmine issue close --service "mysql-cluster-size" --message "MySQL cluster size is $no_cluster at $IDENTIFIER"
         print_colour "Cluster size" "$no_cluster/$CLUSTER_SIZE"
     elif [ -z "$no_cluster" ]; then
         alarm_check_down "cluster_size" "Couldn't get cluster size: $no_cluster/$CLUSTER_SIZE"
-        monokit redmine issue update --service "cluster-size" --message "Couldn't get cluster size with command: \"mysql -sNe \"SHOW STATUS WHERE Variable_name = 'wsrep_cluster_size';\"\""
+        monokit redmine issue update --service "mysql-cluster-size" --message "Couldn't get cluster size with command: \"mysql -sNe \"SHOW STATUS WHERE Variable_name = 'wsrep_cluster_size';\"\""
         print_colour "Cluster size" "Couln't get" "error"
     else
         alarm_check_down "cluster_size" "Cluster size is not accurate: $no_cluster/$CLUSTER_SIZE"
-        monokit redmine issue update --service "cluster-size" --message "MySQL cluster size is $no_cluster at $IDENTIFIER"
+        monokit redmine issue update --service "mysql-cluster-size" --message "MySQL cluster size is $no_cluster at $IDENTIFIER"
         print_colour "Cluster size" "$no_cluster/$CLUSTER_SIZE" "error"
     fi
 
     if [[ "$no_cluster" -eq 1 ]] || [[ "$no_cluster" -gt $CLUSTER_SIZE ]]; then
-        monokit redmine issue create --service "cluster-size" --subject "Cluster size is $no_cluster at $IDENTIFIER" --message "MySQL cluster size is $no_cluster at $IDENTIFIER"
+        monokit redmine issue create --service "mysql-cluster-size" --subject "Cluster size is $no_cluster at $IDENTIFIER" --message "MySQL cluster size is $no_cluster at $IDENTIFIER"
     fi
 }
 

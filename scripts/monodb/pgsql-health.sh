@@ -3,7 +3,7 @@
 #shellcheck disable=SC2034
 
 #~ variables
-script_version="v2.5.0"
+script_version="v2.6.0"
 SCRIPT_NAME=pgsql-health
 SCRIPT_NAME_PRETTY="PGSQL Health"
 
@@ -172,7 +172,7 @@ function cluster_status() {
     mapfile -t cluster_roles < <(echo "$output" | jq -r '.members[] | .role')
     mapfile -t cluster_states < <(curl -s "$CLUSTER_URL" | jq -r '.members[] | .state')
     name=$(yq -r .name /etc/patroni/patroni.yml)
-    this_node=$(curl -s "$CLUSTER_URL" | jq -r --arg name "$name" '.members[] | select(.name==$name) | .role') 
+    this_node=$(curl -s "$CLUSTER_URL" | jq -r --arg name "$name" '.members[] | select(.name==$name) | .role')
     print_colour "This Node" "$this_node"
 
     printf '\n'
@@ -210,6 +210,7 @@ function cluster_status() {
     printf '\n'
     echo_status "Cluster States"
     i=0
+    j=0
     for cluster in "${cluster_names[@]}"; do
         if [ "${cluster_states[$i]}" == "running" ] || [ "${cluster_states[$i]}" == "streaming" ]; then
             print_colour "$cluster" "${cluster_states[$i]}"
@@ -217,9 +218,17 @@ function cluster_status() {
         else
             print_colour "$cluster" "${cluster_states[$i]}" "error"
             alarm_check_down "$cluster" "Cluster $cluster, ${cluster_states[$i]}"
+            j=$((j + 1))
         fi
         i=$((i + 1))
     done
+    if [[ $((i - j)) -eq 1 ]]; then
+        monokit redmine issue create --service "pgsql-cluster-size" --subject "Cluster size is $((i - j)) at $IDENTIFIER" --message "Patroni cluster size is $((i - j)) at $IDENTIFIER"
+    elif [[ $j -eq 0 ]]; then
+        monokit redmine issue close --service "pgsql-cluster-size" --message "Patroni cluster size is $((i - j)) at $IDENTIFIER"
+    else
+        monokit redmine issue update --service "pgsql-cluster-size" --message "Patroni cluster size is $((i - j)) at $IDENTIFIER"
+    fi
 }
 
 function main() {
