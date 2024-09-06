@@ -12,6 +12,7 @@ script_version="v2.0.0"
 #shellcheck disable=SC2034
 SCRIPT_NAME=ssh-notifier
 
+#shellcheck disable=SC2034
 NO_COLORS=1
 
 #shellcheck disable=SC2034
