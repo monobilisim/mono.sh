@@ -406,7 +406,7 @@ function main() {
     printf '\n'
     check_concurrent_calls
     printf '\n'
-    if [[ $(date "+%H") -ge 8 ]] && [[ $(date "+%H") -lt 18 ]]; then
+    if [[ $(date "+%-H") -ge 8 ]] && [[ $(date "+%-H") -lt 18 ]]; then
         check_trunks
     fi
     printf '\n'
