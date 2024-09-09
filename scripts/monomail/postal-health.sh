@@ -33,11 +33,16 @@ parse_config_postal() {
 
     message_threshold=$(yaml .postal.message_threshold $CONFIG_PATH_POSTAL)
     held_threshold=$(yaml .postal.held_threshold $CONFIG_PATH_POSTAL)
+    CHECK_MESSAGE=$(yaml .postal.check_message $CONFIG_PATH_POSTAL)
 
     SEND_ALARM=$(yaml .alarm.enabled $CONFIG_PATH_POSTAL "$SEND_ALARM")
 }
 
 parse_config_postal
+
+if [ -z "$CHECK_MESSAGE" ]; then
+    CHECK_MESSAGE=1
+fi
 
 if [ "$1" == "test" ]; then postal_config="./test.yaml"; else postal_config=/opt/postal/config/postal.yml; fi
 

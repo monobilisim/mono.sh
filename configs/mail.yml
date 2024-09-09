@@ -4,6 +4,7 @@ pmg:
 postal:
   message_threshold: 100
   held_treshold: 100
+  check_message: true
 
 zimbra:
   z_url: example.com
