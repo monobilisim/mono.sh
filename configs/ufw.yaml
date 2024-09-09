@@ -14,3 +14,10 @@ rule_urls:
   - https://example.com/test2.txt udp 53 this is a test comment
   - https://example.com/test3.txt all 443 this is a test comment
   - https://example.com/test4.txt all all this is another test comment
+
+
+# static_rules usage;
+#
+# IP Protocol/all Port/all comment
+static_rules:
+  - all tcp 22 this is a test comment
