@@ -186,7 +186,9 @@ function cluster_status() {
                 echo "  Role of $cluster has changed!"
                 print_colour "  Old Role of $cluster" "$old_role" "error"
                 printf '\n'
-                alarm "[Patroni - $IDENTIFIER] [:info:] Role of $cluster has changed! Old: **$old_role**, Now: **${cluster_roles[$i]}**"
+                if [ "$cluster" == "$IDENTIFIER" ]; then
+                    alarm "[Patroni - $IDENTIFIER] [:info:] Role of $cluster has changed! Old: **$old_role**, Now: **${cluster_roles[$i]}**"
+                fi
                 if [ "${cluster_roles[$i]}" == "leader" ]; then
                     alarm "[Patroni - $IDENTIFIER] [:check:] New leader is $cluster!"
                     if [[ -n "$LEADER_SWITCH_HOOK" ]] && [[ -f "/etc/patroni/patroni.yml" ]]; then
