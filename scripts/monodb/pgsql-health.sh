@@ -225,8 +225,13 @@ function cluster_status() {
         i=$((i + 1))
     done
 
+    # should result in
+    # IDENTIFIER=test-test2-test3
+    # IDENTIFIER_REDMINE=test-test2
+    IDENTIFIER_REDMINE=$(echo "$IDENTIFIER" | cut -d'-' -f1-2)
+
     if [[ ! -f /tmp/mono/pgsql-cluster-size-redmine.log ]]; then
-        if monokit redmine issue exists --subject "Cluster size is $((i - j)) at $IDENTIFIER" --date "$(date +"%Y-%m-%d")" > "$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log; then
+        if monokit redmine issue exists --subject "PgSQL Cluster size is $((i - j)) at $IDENTIFIER_REDMINE" --date "$(date +"%Y-%m-%d")" > "$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log; then
             ISSUE_ID=$(cat "$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log)
         fi
 
@@ -238,11 +243,11 @@ function cluster_status() {
     fi
 
     if [[ $((i - j)) -eq 1 ]]; then
-        monokit redmine issue create --service "pgsql-cluster-size" --subject "Cluster size is $((i - j)) at $IDENTIFIER" --message "Patroni cluster size is $((i - j)) at $IDENTIFIER"
+        monokit redmine issue create --service "pgsql-cluster-size" --subject "PgSQL Cluster size is $((i - j)) at $IDENTIFIER_REDMINE" --message "Patroni cluster size is $((i - j)) at $IDENTIFIER_REDMINE"
     elif [[ $j -eq 0 ]]; then
-        monokit redmine issue close --service "pgsql-cluster-size" --message "Patroni cluster size is $((i - j)) at $IDENTIFIER"
+        monokit redmine issue close --service "pgsql-cluster-size" --message "Patroni cluster size is $((i - j)) at $IDENTIFIER_REDMINE"
     else
-        monokit redmine issue update --service "pgsql-cluster-size" --message "Patroni cluster size is $((i - j)) at $IDENTIFIER"
+        monokit redmine issue update --service "pgsql-cluster-size" --message "Patroni cluster size is $((i - j)) at $IDENTIFIER_REDMINE"
     fi
 }
 
