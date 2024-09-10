@@ -226,8 +226,8 @@ function cluster_status() {
     done
 
     if [[ ! -f /tmp/mono/pgsql-cluster-size-redmine.log ]]; then
-        if monokit redmine issue exists --subject "Cluster size is $((i - j)) at $IDENTIFIER" --date "$(date +"%Y-%m-%d")" > $TMP_PATH_SCRIPT/pgsql-cluster-size-redmine.log; then
-            ISSUE_ID=$(cat $TMP_PATH_SCRIPT/pgsql-cluster-size-redmine.log)
+        if monokit redmine issue exists --subject "Cluster size is $((i - j)) at $IDENTIFIER" --date "$(date +"%Y-%m-%d")" > "$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log; then
+            ISSUE_ID=$(cat "$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log)
         fi
 
         if [[ -z "$ISSUE_ID" ]]; then

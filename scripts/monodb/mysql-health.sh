@@ -88,8 +88,8 @@ function check_cluster_status() {
     no_cluster=$(echo "$cluster_status" | awk '{print $2}')
     
     if [[ ! -f /tmp/mono/mysql-cluster-size-redmine.log ]]; then
-        if monokit redmine issue exists --subject "Cluster size is $no_cluster at $IDENTIFIER" --date "$(date +"%Y-%m-%d")" > $TMP_PATH_SCRIPT/pgsql-cluster-size-redmine.log; then
-            ISSUE_ID=$(cat $TMP_PATH_SCRIPT/mysql-cluster-size-redmine.log)
+        if monokit redmine issue exists --subject "Cluster size is $no_cluster at $IDENTIFIER" --date "$(date +"%Y-%m-%d")" > "$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log; then
+            ISSUE_ID=$(cat "$TMP_PATH_SCRIPT"/mysql-cluster-size-redmine.log)
         fi
 
         if [[ -z "$ISSUE_ID" ]]; then
