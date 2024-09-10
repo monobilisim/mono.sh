@@ -35,6 +35,13 @@ function parse_config_mysql() {
     SEND_ALARM=$(yaml .mysql.alarm.enabled $CONFIG_PATH_MONODB "$SEND_ALARM")
 }
 
+function containsElement() {
+    local e match="$1"
+    shift
+    for e; do [[ "$e" == "$match" ]] && return 0; done
+    return 1
+}
+
 function select_now() {
     echo_status "MySQL Access:"
     if mysql -sNe "SELECT NOW();" >/dev/null; then
@@ -80,6 +87,27 @@ function check_process_count() {
         echo "$increase" >"$file"
     fi
 
+}
+
+function inaccessible_clusters() {
+    listening_clusters=$(mysql -sNe "SHOW STATUS WHERE Variable_name = 'wsrep_incoming_addresses';" | awk '{print $2}' | sed 's/,/\ /g')
+    # shellcheck disable=SC2206
+    listening_clusters_array=($listening_clusters)
+
+    file="$TMP_PATH_SCRIPT/cluster_nodes.txt"
+    if [ -f "$file" ]; then
+        # shellcheck disable=SC2207
+        old_clusters=($(cat "$file"))
+        for cluster in "${old_clusters[@]}"; do
+            if containsElement "$cluster" "${listening_clusters_array[@]}"; then
+                continue
+            else
+                alarm "[$SCRIPT_NAME_PRETTY - $IDENTIFIER] [:red_circle:] Node $cluster is no longer in the cluster."
+            fi
+        done
+    else
+        echo "$listening_clusters" >"$file"
+    fi
 }
 
 function check_cluster_status() {
@@ -193,6 +221,7 @@ function main() {
     check_process_count
     printf '\n'
     if [ "$IS_CLUSTER" -eq 1 ]; then
+        inaccessible_clusters
         check_cluster_status
         check_node_status
         check_cluster_synced
