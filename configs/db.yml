@@ -12,5 +12,7 @@ mysql:
   cluster: 
     enabled: false
     size: 3
+    check_table_day: "Sun"
+    check_table_hour: "05:00"
   alarm:
     enabled: true

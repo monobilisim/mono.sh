@@ -31,6 +31,8 @@ function parse_config_mysql() {
     PROCESS_LIMIT=$(yaml .mysql.process_limit $CONFIG_PATH_MONODB)
     CLUSTER_SIZE=$(yaml .mysql.cluster.size $CONFIG_PATH_MONODB)
     IS_CLUSTER=$(yaml .mysql.cluster.enabled $CONFIG_PATH_MONODB)
+    CHECK_TABLE_DAY=$(yaml .mysql.cluster.check_table_day $CONFIG_PATH_MONODB)
+    CHECK_TABLE_HOUR=$(yaml .mysql.cluster.check_table_hour $CONFIG_PATH_MONODB)
 
     SEND_ALARM=$(yaml .mysql.alarm.enabled $CONFIG_PATH_MONODB "$SEND_ALARM")
 }
@@ -228,7 +230,15 @@ function main() {
         #check_flow_control
     fi
 
-    if [ "$(date "+%H:%M")" == "05:00" ]; then
+    if [ -z "$CHECK_TABLE_DAY" ]; then
+        CHECK_TABLE_DAY="Sun"
+    fi
+
+    if [ -z "$CHECK_TABLE_HOUR" ]; then
+        CHECK_TABLE_HOUR="05:00"
+    fi 
+
+    if [ "$(date "+%a %H:%M")" == "$CHECK_TABLE_DAY $CHECK_TABLE_HOUR" ]; then
         check_db
     fi
 }
