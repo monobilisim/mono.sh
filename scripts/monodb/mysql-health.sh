@@ -2,7 +2,7 @@
 ###~ description: Checks the status of MySQL and MySQL cluster
 
 #shellcheck disable=SC2034
-script_version=v2.7.0
+script_version=v2.8.0
 SCRIPT_NAME="mysql-health"
 SCRIPT_NAME_PRETTY="MySQL Health"
 
@@ -86,6 +86,19 @@ function check_cluster_status() {
     echo_status "Cluster Status:"
     cluster_status=$(mysql -sNe "SHOW STATUS WHERE Variable_name = 'wsrep_cluster_size';")
     no_cluster=$(echo "$cluster_status" | awk '{print $2}')
+    
+    if [[ ! -f /tmp/mono/mysql-cluster-size-redmine.log ]]; then
+        if monokit redmine issue exists --subject "Cluster size is $no_cluster at $IDENTIFIER" --date "$(date +"%Y-%m-%d")" > $TMP_PATH_SCRIPT/pgsql-cluster-size-redmine.log; then
+            ISSUE_ID=$(cat $TMP_PATH_SCRIPT/mysql-cluster-size-redmine.log)
+        fi
+
+        if [[ -z "$ISSUE_ID" ]]; then
+            mkdir -p /tmp/mono
+            # Put issue ID in a file so monokit can know it is already created
+            echo "$ISSUE_ID" > /tmp/mono/mysql-cluster-size-redmine.log
+        fi
+    fi
+
     if [ "$no_cluster" -eq "$CLUSTER_SIZE" ]; then
         alarm_check_up "cluster_size" "Cluster size is accurate: $no_cluster/$CLUSTER_SIZE"
         monokit redmine issue close --service "mysql-cluster-size" --message "MySQL cluster size is $no_cluster at $IDENTIFIER"

@@ -3,7 +3,7 @@
 #shellcheck disable=SC2034
 
 #~ variables
-script_version="v2.6.0"
+script_version="v2.7.0"
 SCRIPT_NAME=pgsql-health
 SCRIPT_NAME_PRETTY="PGSQL Health"
 
@@ -224,6 +224,19 @@ function cluster_status() {
         fi
         i=$((i + 1))
     done
+
+    if [[ ! -f /tmp/mono/pgsql-cluster-size-redmine.log ]]; then
+        if monokit redmine issue exists --subject "Cluster size is $((i - j)) at $IDENTIFIER" --date "$(date +"%Y-%m-%d")" > $TMP_PATH_SCRIPT/pgsql-cluster-size-redmine.log; then
+            ISSUE_ID=$(cat $TMP_PATH_SCRIPT/pgsql-cluster-size-redmine.log)
+        fi
+
+        if [[ -z "$ISSUE_ID" ]]; then
+            mkdir -p /tmp/mono
+            # Put issue ID in a file so monokit can know it is already created
+            echo "$ISSUE_ID" > /tmp/mono/pgsql-cluster-size-redmine.log
+        fi
+    fi
+
     if [[ $((i - j)) -eq 1 ]]; then
         monokit redmine issue create --service "pgsql-cluster-size" --subject "Cluster size is $((i - j)) at $IDENTIFIER" --message "Patroni cluster size is $((i - j)) at $IDENTIFIER"
     elif [[ $j -eq 0 ]]; then
