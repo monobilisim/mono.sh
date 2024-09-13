@@ -102,14 +102,13 @@ function inaccessible_clusters() {
         old_clusters=($(cat "$file"))
         for cluster in "${old_clusters[@]}"; do
             if containsElement "$cluster" "${listening_clusters_array[@]}"; then
-                alarm_check_up "$cluster" "Node $cluster is in the cluster again."
+                continue
             else
                 alarm_check_down "$cluster" "Node $cluster is no longer in the cluster."
             fi
         done
-    else
-        echo "$listening_clusters" >"$file"
     fi
+    echo "$listening_clusters" >"$file"
 }
 
 function check_cluster_status() {
@@ -120,14 +119,14 @@ function check_cluster_status() {
     IDENTIFIER_REDMINE=$(echo "$IDENTIFIER" | cut -d'-' -f1-2)
 
     if [[ ! -f /tmp/mono/mysql-cluster-size-redmine.log ]]; then
-        if monokit redmine issue exists --subject "Cluster size is $no_cluster at $IDENTIFIER_REDMINE" --date "$(date +"%Y-%m-%d")" > "$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log; then
+        if monokit redmine issue exists --subject "Cluster size is $no_cluster at $IDENTIFIER_REDMINE" --date "$(date +"%Y-%m-%d")" >"$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log; then
             ISSUE_ID=$(cat "$TMP_PATH_SCRIPT"/mysql-cluster-size-redmine.log)
         fi
 
         if [[ -z "$ISSUE_ID" ]]; then
             mkdir -p /tmp/mono
             # Put issue ID in a file so monokit can know it is already created
-            echo "$ISSUE_ID" > /tmp/mono/mysql-cluster-size-redmine.log
+            echo "$ISSUE_ID" >/tmp/mono/mysql-cluster-size-redmine.log
         fi
     fi
 
@@ -238,7 +237,7 @@ function main() {
 
     if [ -z "$CHECK_TABLE_HOUR" ]; then
         CHECK_TABLE_HOUR="05:00"
-    fi 
+    fi
 
     if [ "$(date "+%a %H:%M")" == "$CHECK_TABLE_DAY $CHECK_TABLE_HOUR" ]; then
         check_db
