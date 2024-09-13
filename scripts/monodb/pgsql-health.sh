@@ -3,9 +3,14 @@
 #shellcheck disable=SC2034
 
 #~ variables
-script_version="v2.7.1"
+VERSION="v2.7.1"
 SCRIPT_NAME=pgsql-health
 SCRIPT_NAME_PRETTY="PGSQL Health"
+
+[[ "$1" == '-v' ]] || [[ "$1" == '--version' ]] && {
+    echo "$VERSION"
+    exit 0
+}
 
 # https://stackoverflow.com/questions/4774054/reliable-way-for-a-bash-script-to-get-the-full-path-to-itself
 SCRIPTPATH="$(

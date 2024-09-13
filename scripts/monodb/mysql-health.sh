@@ -2,7 +2,7 @@
 ###~ description: Checks the status of MySQL and MySQL cluster
 
 #shellcheck disable=SC2034
-script_version=v2.8.0
+VERSION=v2.8.0
 SCRIPT_NAME="mysql-health"
 SCRIPT_NAME_PRETTY="MySQL Health"
 
