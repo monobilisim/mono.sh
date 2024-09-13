@@ -3,7 +3,7 @@
 #shellcheck disable=SC2034
 
 #~ variables
-script_version="v2.7.0"
+script_version="v2.7.1"
 SCRIPT_NAME=pgsql-health
 SCRIPT_NAME_PRETTY="PGSQL Health"
 
@@ -33,7 +33,7 @@ function parse_config_pgsql() {
     LEADER_SWITCH_HOOK=$(yaml .postgres.leader_switch_hook $CONFIG_PATH_MONODB "")
 
     if [ -z "$PATRONI_API" ] && [ -f /etc/patroni/patroni.yml ]; then
-        PATRONI_API="$(yq -r .restapi.listen /etc/patroni/patroni.yml)"
+        PATRONI_API="$(yq -r .restapi.connect_address /etc/patroni/patroni.yml)"
     fi
 }
 
