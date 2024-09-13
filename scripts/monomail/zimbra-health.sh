@@ -146,12 +146,12 @@ function check_zimbra_services() {
         if [[ $is_active =~ [A-Z] ]]; then
             if [ "${is_active,,}" != 'running' ]; then
                 [[ $RESTART_COUNTER -gt "$RESTART_LIMIT" ]] && {
-                    alarm_check_down "$service_name" "Couldn't restart stopped services in $((RESTART_LIMIT + 1)) tries"
+                    alarm_check_down "$service_name" "Couldn't restart stopped services in $((RESTART_LIMIT + 1)) tries" "service"
                     echo "${RED_FG}Couldn't restart stopped services in $((RESTART_LIMIT + 1)) tries${RESET}"
                     return
                 }
                 print_colour "$service_name" "$is_active" "error"
-                alarm_check_down "$service_name" "Service: $service_name is not running"
+                alarm_check_down "$service_name" "Service: $service_name is not running" "service"
                 if [ "$RESTART" == 1 ]; then
                     # i=$(echo "${ZIMBRA_SERVICES[@]}" | sed 's/ /\n/g' | grep "$service_name:")
                     # zimbra_service_name=$(echo $i | cut -d \: -f1)
@@ -195,7 +195,7 @@ function check_zimbra_services() {
                 # should_restart=1
             else
                 print_colour "$service_name" "$is_active"
-                alarm_check_up "$service_name" "Service: $service_name started running"
+                alarm_check_up "$service_name" "Service: $service_name started running" "service"
             fi
         fi
     done
