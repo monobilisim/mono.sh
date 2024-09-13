@@ -2,7 +2,7 @@
 ###~ description: Checks the status of MySQL and MySQL cluster
 
 #shellcheck disable=SC2034
-VERSION=v2.8.0
+VERSION=v2.8.1
 SCRIPT_NAME="mysql-health"
 SCRIPT_NAME_PRETTY="MySQL Health"
 
@@ -102,9 +102,9 @@ function inaccessible_clusters() {
         old_clusters=($(cat "$file"))
         for cluster in "${old_clusters[@]}"; do
             if containsElement "$cluster" "${listening_clusters_array[@]}"; then
-                continue
+                alarm_check_up "$cluster" "Node $cluster is in the cluster again."
             else
-                alarm "[$SCRIPT_NAME_PRETTY - $IDENTIFIER] [:red_circle:] Node $cluster is no longer in the cluster."
+                alarm_check_down "$cluster" "Node $cluster is no longer in the cluster."
             fi
         done
     else
