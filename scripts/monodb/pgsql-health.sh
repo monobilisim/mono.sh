@@ -252,7 +252,7 @@ function cluster_status() {
     elif [[ $j -eq 0 ]]; then
         monokit redmine issue close --service "pgsql-cluster-size" --message "Patroni cluster size is $((i - j)) at $IDENTIFIER_REDMINE"
     else
-        monokit redmine issue update --service "pgsql-cluster-size" --message "Patroni cluster size is $((i - j)) at $IDENTIFIER_REDMINE"
+        monokit redmine issue update --service "pgsql-cluster-size" --message "Patroni cluster size is $((i - j)) at $IDENTIFIER_REDMINE" --checkNote
     fi
 }
 

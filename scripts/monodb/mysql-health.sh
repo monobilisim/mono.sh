@@ -136,11 +136,11 @@ function check_cluster_status() {
         print_colour "Cluster size" "$no_cluster/$CLUSTER_SIZE"
     elif [ -z "$no_cluster" ]; then
         alarm_check_down "cluster_size" "Couldn't get cluster size: $no_cluster/$CLUSTER_SIZE"
-        monokit redmine issue update --service "mysql-cluster-size" --message "Couldn't get cluster size with command: \"mysql -sNe \"SHOW STATUS WHERE Variable_name = 'wsrep_cluster_size';\"\""
+        monokit redmine issue update --service "mysql-cluster-size" --message "Couldn't get cluster size with command: \"mysql -sNe \"SHOW STATUS WHERE Variable_name = 'wsrep_cluster_size';\"\"" --checkNote
         print_colour "Cluster size" "Couln't get" "error"
     else
         alarm_check_down "cluster_size" "Cluster size is not accurate: $no_cluster/$CLUSTER_SIZE"
-        monokit redmine issue update --service "mysql-cluster-size" --message "MySQL cluster size is $no_cluster at $IDENTIFIER_REDMINE"
+        monokit redmine issue update --service "mysql-cluster-size" --message "MySQL cluster size is $no_cluster at $IDENTIFIER_REDMINE" --checkNote
         print_colour "Cluster size" "$no_cluster/$CLUSTER_SIZE" "error"
     fi
 
