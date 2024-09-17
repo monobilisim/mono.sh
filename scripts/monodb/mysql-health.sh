@@ -118,6 +118,12 @@ function check_cluster_status() {
 
     IDENTIFIER_REDMINE=$(echo "$IDENTIFIER" | cut -d'-' -f1-2)
 
+    if [[ "$IDENTIFIER" == "$IDENTIFIER_REDMINE" ]]; then
+        # Remove all numbers from the end of the string
+        # Should result in test-test2-test
+        IDENTIFIER_REDMINE=$(echo "$IDENTIFIER" | sed 's/[0-9]*$//')
+    fi
+
     if [[ ! -f /tmp/mono/mysql-cluster-size-redmine.log ]]; then
         if monokit redmine issue exists --subject "Cluster size is $no_cluster at $IDENTIFIER_REDMINE" --date "$(date +"%Y-%m-%d")" >"$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log; then
             ISSUE_ID=$(cat "$TMP_PATH_SCRIPT"/mysql-cluster-size-redmine.log)

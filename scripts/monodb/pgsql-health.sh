@@ -235,6 +235,13 @@ function cluster_status() {
     # IDENTIFIER_REDMINE=test-test2
     IDENTIFIER_REDMINE=$(echo "$IDENTIFIER" | cut -d'-' -f1-2)
 
+    # Fallback
+    if [[ "$IDENTIFIER" == "$IDENTIFIER_REDMINE" ]]; then
+        # Remove all numbers from the end of the string
+        # Should result in test-test2-test
+        IDENTIFIER_REDMINE=$(echo "$IDENTIFIER" | sed 's/[0-9]*$//')
+    fi
+
     if [[ ! -f /tmp/mono/pgsql-cluster-size-redmine.log ]]; then
         if monokit redmine issue exists --subject "PgSQL Cluster size is $((i - j)) at $IDENTIFIER_REDMINE" --date "$(date +"%Y-%m-%d")" > "$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log; then
             ISSUE_ID=$(cat "$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log)
