@@ -2,7 +2,7 @@
 ###~ description: Checks the status of MySQL and MySQL cluster
 
 #shellcheck disable=SC2034
-VERSION=v2.8.1
+VERSION=v2.9.0
 SCRIPT_NAME="mysql-health"
 SCRIPT_NAME_PRETTY="MySQL Health"
 
@@ -129,7 +129,7 @@ function check_cluster_status() {
             ISSUE_ID=$(cat "$TMP_PATH_SCRIPT"/mysql-cluster-size-redmine.log)
         fi
 
-        if [[ -z "$ISSUE_ID" ]]; then
+        if [[ -n "$ISSUE_ID" ]]; then
             mkdir -p /tmp/mono
             # Put issue ID in a file so monokit can know it is already created
             echo "$ISSUE_ID" >/tmp/mono/mysql-cluster-size-redmine.log

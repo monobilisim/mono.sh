@@ -3,7 +3,7 @@
 #shellcheck disable=SC2034
 
 #~ variables
-VERSION="v2.7.1"
+VERSION="v2.8.0"
 SCRIPT_NAME=pgsql-health
 SCRIPT_NAME_PRETTY="PGSQL Health"
 
@@ -212,19 +212,22 @@ function cluster_status() {
         fi
         i=$((i + 1))
     done
-    echo "$output" | jq >"$TMP_PATH_SCRIPT"/raw_output.json
 
     printf '\n'
     echo_status "Cluster States"
     i=0
     j=0
+    running_clusters=()
+    stopped_clusters=()
     for cluster in "${cluster_names[@]}"; do
         if [ "${cluster_states[$i]}" == "running" ] || [ "${cluster_states[$i]}" == "streaming" ]; then
             print_colour "$cluster" "${cluster_states[$i]}"
             alarm_check_up "$cluster" "Cluster $cluster, ${cluster_states[$i]} again"
+            running_clusters+=("$cluster")
         else
             print_colour "$cluster" "${cluster_states[$i]}" "error"
             alarm_check_down "$cluster" "Cluster $cluster, ${cluster_states[$i]}"
+            stopped_clusters+=("$cluster")
             j=$((j + 1))
         fi
         i=$((i + 1))
@@ -243,24 +246,50 @@ function cluster_status() {
     fi
 
     if [[ ! -f /tmp/mono/pgsql-cluster-size-redmine.log ]]; then
-        if monokit redmine issue exists --subject "PgSQL Cluster size is $((i - j)) at $IDENTIFIER_REDMINE" --date "$(date +"%Y-%m-%d")" > "$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log; then
+        if monokit redmine issue exists --subject "PgSQL Cluster size is 1 at $IDENTIFIER_REDMINE" --date "$(date +"%Y-%m-%d")" >"$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log; then
             ISSUE_ID=$(cat "$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log)
         fi
 
-        if [[ -z "$ISSUE_ID" ]]; then
+        if [[ -n "$ISSUE_ID" ]]; then
             mkdir -p /tmp/mono
             # Put issue ID in a file so monokit can know it is already created
-            echo "$ISSUE_ID" > /tmp/mono/pgsql-cluster-size-redmine.log
+            echo "$ISSUE_ID" >/tmp/mono/pgsql-cluster-size-redmine.log
         fi
     fi
 
-    if [[ $((i - j)) -eq 1 ]]; then
-        monokit redmine issue create --service "pgsql-cluster-size" --subject "PgSQL Cluster size is $((i - j)) at $IDENTIFIER_REDMINE" --message "Patroni cluster size is $((i - j)) at $IDENTIFIER_REDMINE"
-    elif [[ $j -eq 0 ]]; then
-        monokit redmine issue close --service "pgsql-cluster-size" --message "Patroni cluster size is $((i - j)) at $IDENTIFIER_REDMINE"
+    if [ -f "$TMP_PATH_SCRIPT"/raw_output_original.json ]; then
+        mapfile -t old_cluster_names < <(jq -r '.members[] | .name ' <"$TMP_PATH_SCRIPT"/raw_output_original.json)
+        mapfile -t cluster_difference < <(echo "${old_cluster_names[@]}" "${running_clusters[@]}" | tr ' ' '\n' | sort | uniq -u)
+        if [ "${#running_clusters[@]}" -gt "${#old_cluster_names[@]}" ]; then
+            rm -rf "$TMP_PATH_SCRIPT"/raw_output_original.json
+        else
+            if [ ${#running_clusters[@]} -eq ${#old_cluster_names[@]} ]; then
+                running_clusters=("${running_clusters[@]/#/\&nbsp;\ \ -\ }")
+                running_clusters=("${running_clusters[@]/%/\&nbsp;\ \ <br\ \/>}")
+                monokit redmine issue close --service "pgsql-cluster-size" --message "Patroni cluster size is ${#running_clusters[@]} at $IDENTIFIER_REDMINE.<br /><br />Active nodes:<br />${running_clusters[*]}"
+                rm -rf "$TMP_PATH_SCRIPT"/raw_output_original.json
+            else
+                cluster_difference=("${cluster_difference[@]/#/\&nbsp;\ \ -\ }")
+                cluster_difference=("${cluster_difference[@]/%/\&nbsp;\ \ <br\ \/>}")
+                running_clusters=("${running_clusters[@]/#/\&nbsp;\ \ -\ }")
+                running_clusters=("${running_clusters[@]/%/\&nbsp;\ \ <br\ \/>}")
+                monokit redmine issue update --service "pgsql-cluster-size" --message "Patroni cluster size is ${#running_clusters[@]} at $IDENTIFIER_REDMINE.<br /><br />Active nodes:<br />${running_clusters[*]}<br /><br />Inactive nodes:<br />${cluster_difference[*]}" --checkNote
+            fi
+        fi
     else
-        monokit redmine issue update --service "pgsql-cluster-size" --message "Patroni cluster size is $((i - j)) at $IDENTIFIER_REDMINE" --checkNote
+        if [ ${#running_clusters[@]} -eq 1 ]; then
+            mapfile -t old_cluster_names < <(jq -r '.members[] | .name ' <"$TMP_PATH_SCRIPT"/raw_output.json)
+            mapfile -t cluster_difference < <(echo "${old_cluster_names[@]}" "${running_clusters[@]}" | tr ' ' '\n' | sort | uniq -u)
+            cluster_difference=("${cluster_difference[@]/#/\&nbsp;\ \ -\ }")
+            cluster_difference=("${cluster_difference[@]/%/\&nbsp;\ \ <br\ \/>}")
+            running_clusters=("${running_clusters[@]/#/\&nbsp;\ \ -\ }")
+            running_clusters=("${running_clusters[@]/%/\&nbsp;\ \ <br\ \/>}")
+            monokit redmine issue create --service "pgsql-cluster-size" --subject "PgSQL Cluster size is 1 at $IDENTIFIER_REDMINE" --message "Patroni cluster size is 1 at $IDENTIFIER_REDMINE.<br /><br />Active nodes:<br />${running_clusters[*]}<br /><br />Inactive nodes:<br />${cluster_difference[*]}"
+            cp "$TMP_PATH_SCRIPT"/raw_output.json "$TMP_PATH_SCRIPT"/raw_output_original.json
+        fi
     fi
+
+    echo "$output" | jq >"$TMP_PATH_SCRIPT"/raw_output.json
 }
 
 function main() {

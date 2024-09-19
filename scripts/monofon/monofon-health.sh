@@ -3,7 +3,7 @@
 
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-VERSION=v2.5.0
+VERSION=v2.5.1
 
 #shellcheck disable=SC2034
 SCRIPT_NAME="monofon-health"
@@ -328,8 +328,8 @@ check_voice_records() {
             print_colour "Number of Recordings" "$file_count"
         fi
     else
-        alarm_check_down "recording_folder" "Folder: $recordings_path doesn't exists. Creating..."
-        echo "Folder: $recordings_path doesn't exists. Creating..."
+        alarm_check_down "recording_folder" "Folder: $recordings_path doesn't exist. Creating..."
+        echo "Folder: $recordings_path doesn't exist. Creating..."
         mkdir -p "$recordings_path"
         chown asterisk:asterisk "$recordings_path"
         if [ -d "$recordings_path" ]; then
