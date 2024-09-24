@@ -2,7 +2,7 @@
 ###~ description: Checks the status of MySQL and MySQL cluster
 
 #shellcheck disable=SC2034
-VERSION=v2.9.0
+VERSION=v2.9.1
 SCRIPT_NAME="mysql-health"
 SCRIPT_NAME_PRETTY="MySQL Health"
 
@@ -138,7 +138,7 @@ function check_cluster_status() {
 
     if [ "$no_cluster" -eq "$CLUSTER_SIZE" ]; then
         alarm_check_up "cluster_size" "Cluster size is accurate: $no_cluster/$CLUSTER_SIZE"
-        monokit redmine issue close --service "mysql-cluster-size" --message "MySQL cluster size is $no_cluster at $IDENTIFIER_REDMINE"
+        monokit redmine issue up --service "mysql-cluster-size" --message "MySQL cluster size is $no_cluster at $IDENTIFIER_REDMINE"
         print_colour "Cluster size" "$no_cluster/$CLUSTER_SIZE"
     elif [ -z "$no_cluster" ]; then
         alarm_check_down "cluster_size" "Couldn't get cluster size: $no_cluster/$CLUSTER_SIZE"
@@ -151,7 +151,7 @@ function check_cluster_status() {
     fi
 
     if [[ "$no_cluster" -eq 1 ]] || [[ "$no_cluster" -gt $CLUSTER_SIZE ]]; then
-        monokit redmine issue create --service "mysql-cluster-size" --subject "Cluster size is $no_cluster at $IDENTIFIER_REDMINE" --message "MySQL cluster size is $no_cluster at $IDENTIFIER"
+        monokit redmine issue down --service "mysql-cluster-size" --subject "Cluster size is $no_cluster at $IDENTIFIER_REDMINE" --message "MySQL cluster size is $no_cluster at $IDENTIFIER"
     fi
 }
 
