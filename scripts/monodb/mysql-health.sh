@@ -111,6 +111,29 @@ function inaccessible_clusters() {
     echo "$listening_clusters" >"$file"
 }
 
+function check_issue_exists() {
+    IDENTIFIER_REDMINE=$(echo "$IDENTIFIER" | cut -d'-' -f1-2)
+
+    if [[ "$IDENTIFIER" == "$IDENTIFIER_REDMINE" ]]; then
+        # Remove all numbers from the end of the string
+        # Should result in test-test2-test
+        IDENTIFIER_REDMINE=$(echo "$IDENTIFIER" | sed 's/[0-9]*$//')
+    fi
+    
+    if [[ ! -f /tmp/mono/mysql-cluster-size-redmine.log ]]; then
+        if monokit redmine issue exists --subject "Cluster size is $no_cluster at $IDENTIFIER_REDMINE" --date "$(date +"%Y-%m-%d")" >"$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log; then
+            ISSUE_ID=$(cat "$TMP_PATH_SCRIPT"/mysql-cluster-size-redmine.log)
+        fi
+
+        if [[ -n "$ISSUE_ID" ]]; then
+            mkdir -p /tmp/mono
+            # Put issue ID in a file so monokit can know it is already created
+            echo "$ISSUE_ID" >/tmp/mono/mysql-cluster-size-redmine.log
+        fi
+    fi
+}
+
+
 function check_cluster_status() {
     echo_status "Cluster Status:"
     cluster_status=$(mysql -sNe "SHOW STATUS WHERE Variable_name = 'wsrep_cluster_size';")
@@ -124,33 +147,24 @@ function check_cluster_status() {
         IDENTIFIER_REDMINE=$(echo "$IDENTIFIER" | sed 's/[0-9]*$//')
     fi
 
-    if [[ ! -f /tmp/mono/mysql-cluster-size-redmine.log ]]; then
-        if monokit redmine issue exists --subject "Cluster size is $no_cluster at $IDENTIFIER_REDMINE" --date "$(date +"%Y-%m-%d")" >"$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log; then
-            ISSUE_ID=$(cat "$TMP_PATH_SCRIPT"/mysql-cluster-size-redmine.log)
-        fi
-
-        if [[ -n "$ISSUE_ID" ]]; then
-            mkdir -p /tmp/mono
-            # Put issue ID in a file so monokit can know it is already created
-            echo "$ISSUE_ID" >/tmp/mono/mysql-cluster-size-redmine.log
-        fi
-    fi
-
     if [ "$no_cluster" -eq "$CLUSTER_SIZE" ]; then
         alarm_check_up "cluster_size" "Cluster size is accurate: $no_cluster/$CLUSTER_SIZE"
         monokit redmine issue up --service "mysql-cluster-size" --message "MySQL cluster size is $no_cluster at $IDENTIFIER_REDMINE"
         print_colour "Cluster size" "$no_cluster/$CLUSTER_SIZE"
     elif [ -z "$no_cluster" ]; then
         alarm_check_down "cluster_size" "Couldn't get cluster size: $no_cluster/$CLUSTER_SIZE"
+        check_issue_exists
         monokit redmine issue update --service "mysql-cluster-size" --message "Couldn't get cluster size with command: \"mysql -sNe \"SHOW STATUS WHERE Variable_name = 'wsrep_cluster_size';\"\"" --checkNote
         print_colour "Cluster size" "Couln't get" "error"
     else
         alarm_check_down "cluster_size" "Cluster size is not accurate: $no_cluster/$CLUSTER_SIZE"
+        check_issue_exists
         monokit redmine issue update --service "mysql-cluster-size" --message "MySQL cluster size is $no_cluster at $IDENTIFIER_REDMINE" --checkNote
         print_colour "Cluster size" "$no_cluster/$CLUSTER_SIZE" "error"
     fi
 
     if [[ "$no_cluster" -eq 1 ]] || [[ "$no_cluster" -gt $CLUSTER_SIZE ]]; then
+        check_issue_exists
         monokit redmine issue down --service "mysql-cluster-size" --subject "Cluster size is $no_cluster at $IDENTIFIER_REDMINE" --message "MySQL cluster size is $no_cluster at $IDENTIFIER"
     fi
 }

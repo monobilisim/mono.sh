@@ -154,6 +154,30 @@ function check_running_queries() {
     fi
 }
 
+function check_issue_exists() {
+    # IDENTIFIER_REDMINE=test-test2
+    IDENTIFIER_REDMINE=$(echo "$IDENTIFIER" | cut -d'-' -f1-2)
+
+    # Fallback
+    if [[ "$IDENTIFIER" == "$IDENTIFIER_REDMINE" ]]; then
+        # Remove all numbers from the end of the string
+        # Should result in test-test2-test
+        IDENTIFIER_REDMINE=$(echo "$IDENTIFIER" | sed 's/[0-9]*$//')
+    fi
+
+    if [[ ! -f /tmp/mono/pgsql-cluster-size-redmine.log ]]; then
+        if monokit redmine issue exists --subject "PgSQL Cluster size is 1 at $IDENTIFIER_REDMINE" --date "$(date +"%Y-%m-%d")" >"$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log; then
+            ISSUE_ID=$(cat "$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log)
+        fi
+
+        if [[ -n "$ISSUE_ID" ]]; then
+            mkdir -p /tmp/mono
+            # Put issue ID in a file so monokit can know it is already created
+            echo "$ISSUE_ID" >/tmp/mono/pgsql-cluster-size-redmine.log
+        fi
+    fi
+}
+
 function cluster_status() {
     echo_status "Patroni Status"
     if systemctl status patroni.service >/dev/null; then
@@ -245,18 +269,6 @@ function cluster_status() {
         IDENTIFIER_REDMINE=$(echo "$IDENTIFIER" | sed 's/[0-9]*$//')
     fi
 
-    if [[ ! -f /tmp/mono/pgsql-cluster-size-redmine.log ]]; then
-        if monokit redmine issue exists --subject "PgSQL Cluster size is 1 at $IDENTIFIER_REDMINE" --date "$(date +"%Y-%m-%d")" >"$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log; then
-            ISSUE_ID=$(cat "$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log)
-        fi
-
-        if [[ -n "$ISSUE_ID" ]]; then
-            mkdir -p /tmp/mono
-            # Put issue ID in a file so monokit can know it is already created
-            echo "$ISSUE_ID" >/tmp/mono/pgsql-cluster-size-redmine.log
-        fi
-    fi
-
     patroni_list_out="$(patronictl list)"
 
     if [ -f "$TMP_PATH_SCRIPT"/raw_output_original.json ] && [ "$(jq .locked /tmp/mono/pgsql-cluster-size-redmine-stat.log)" == "true" ]; then
@@ -273,6 +285,7 @@ function cluster_status() {
                 monokit redmine issue up --service "pgsql-cluster-size" --message "Patroni cluster boyutu: ${#running_clusters[@]} - $IDENTIFIER.<br />Aktif sunucular:<br />${running_clusters[*]}<br />$patroni_list_out"
                 rm -rf "$TMP_PATH_SCRIPT"/raw_output_original.json
             else
+                check_issue_exists
                 monokit redmine issue update --service "pgsql-cluster-size" --message "Patroni cluster boyutu: ${#running_clusters[@]} - $IDENTIFIER.<br />Aktif sunucular:<br />${running_clusters[*]}<br />Kapalı sunucular:<br />${cluster_difference[*]}<br />$patroni_list_out" --checkNote
             fi
         fi
@@ -287,6 +300,7 @@ function cluster_status() {
             cluster_difference=("${cluster_difference[@]/%/\&nbsp;\ \ <br\ \/>}")
             running_clusters=("${running_clusters[@]/#/\&nbsp;\ \ -\ }")
             running_clusters=("${running_clusters[@]/%/\&nbsp;\ \ <br\ \/>}")
+            check_issue_exists
             monokit redmine issue down --service "pgsql-cluster-size" --subject "PgSQL Cluster boyutu: 1 - $IDENTIFIER_REDMINE" --message "Patroni cluster boyutu: 1 - $IDENTIFIER.<br />Aktif sunucu:<br />${running_clusters[*]}<br />Kapalı sunucular:<br />${cluster_difference[*]}<br />$patroni_list_out"
         fi
     fi
