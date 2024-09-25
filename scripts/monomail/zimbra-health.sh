@@ -204,11 +204,11 @@ function check_ssl() {
     remaining_seconds=$((expiry_timestamp - current_timestamp))
     days_to_expiry=$((remaining_seconds / 86400))
     if [ $days_to_expiry -lt 10 ]; then
-        alarm_check_down "ssl-expire" "SSl expiration: $days_to_expiry days left"
-        print_colour "SSl expiration" "$days_to_expiry days" "error"
+        alarm_check_down "ssl-expire" "SSL expiration: $days_to_expiry days left"
+        print_colour "SSL expiration" "$days_to_expiry days" "error"
     else
-        alarm_check_up "ssl-expire" "SSl expiration: $days_to_expiry days left"
-        print_colour "SSl expiration" "$days_to_expiry days"
+        alarm_check_up "ssl-expire" "SSL expiration: $days_to_expiry days left"
+        print_colour "SSL expiration" "$days_to_expiry days"
     fi
 }
 
