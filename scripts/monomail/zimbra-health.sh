@@ -1,7 +1,7 @@
 #!/bin/bash
 ###~ description: This script checks zimbra and zextras health
 
-VERSION=v1.0.0
+VERSION=v1.1.0
 
 #shellcheck disable=SC2034
 SCRIPT_NAME="zimbra-health"
@@ -39,33 +39,6 @@ parse_config_zimbra() {
 parse_config_zimbra
 
 RESTART_COUNTER=0
-
-#ZIMBRA_SERVICES=(
-#    "amavis:zmamavisdctl"
-#    "antispam:zmamavisdctl"
-#    "antivirus:zmclamdctl:zmfreshclamctl"
-#    "cbpolicyd:zmcbpolicydctl"
-#    "dnscache:zmdnscachectl"
-#    "ldap:ldap"
-#    "logger:zmloggerctl"
-#    "mailbox:zmmailboxdctl"
-#    "memcached:zmmemcachedctl"
-#    "mta:zmmtactl:zmsaslauthdctl"
-#    "opendkim:zmopendkimctl"
-#    "proxy:zmproxyctl"
-#    "service webapp:zmmailboxdctl"
-#    "snmp:zmswatch"
-#    "spell:zmspellctl:zmapachectl"
-#    "stats:zmstatctl"
-#    "zimbra webapp:zmmailboxdctl"
-#    "zimbraAdmin webapp:zmmailboxdctl"
-#    "zimlet webapp:zmmailboxdctl"
-#    "zmconfigd:zmconfigdctl"
-#)
-#for i in "${ZIMBRA_SERVICES[@]}"; do
-#    zimbra_service_name=$(echo "$i" | cut -d \: -f1)
-#    zimbra_service_ctl=($(echo "$i" | cut -d\: -f2- | sed 's/:/ /g'))
-#done
 
 function check_ip_access() {
     echo_status "Access through IP"
@@ -153,20 +126,6 @@ function check_zimbra_services() {
                 print_colour "$service_name" "$is_active" "error"
                 alarm_check_down "$service_name" "Service: $service_name is not running" "service"
                 if [ "$RESTART" == 1 ]; then
-                    # i=$(echo "${ZIMBRA_SERVICES[@]}" | sed 's/ /\n/g' | grep "$service_name:")
-                    # zimbra_service_name=$(echo $i | cut -d \: -f1)
-                    # zimbra_service_ctl=($(echo $i | cut -d\: -f2- | sed 's/:/\n/g'))
-                    # for ctl in "${zimbra_service_ctl[@]}"; do
-                    #     echo Restarting "$ctl"...
-                    #     su - zimbra -c "$ctl start"
-                    #     if ! su - zimbra -c "$ctl start"; then
-                    #         RESTART_COUNTER=$((RESTART_COUNTER + 1))
-                    #     fi
-                    # done
-                    # printf '\n'
-                    # check_zimbra_services
-                    # break
-
                     if id "zimbra" &>/dev/null; then
                         z_user="zimbra"
                     else
@@ -179,20 +138,7 @@ function check_zimbra_services() {
                     printf '\n'
                     check_zimbra_services
                     break
-
-                    # should_continue=true
-                    # while $should_continue; do
-                    #     if [[ $(echo "${zimbra_services[i]}" | awk '{print $NF}') =~ [A-Z] ]]; then
-                    #         should_continue=false
-                    #     else
-                    #         ctl=$(echo "${zimbra_services[i]}" | awk '{print $1}')
-                    #         su - zimbra -c "$ctl start"
-                    #         RESTART_COUNTER
-                    #         i=$((i + 1))
-                    #     fi
-                    # done
                 fi
-                # should_restart=1
             else
                 print_colour "$service_name" "$is_active"
                 alarm_check_up "$service_name" "Service: $service_name started running" "service"
@@ -238,6 +184,32 @@ function check_install() {
     fi
 }
 
+function check_ssl() {
+    echo_status "SSL Expiration"
+    if id "zimbra" &>/dev/null; then
+        cert_info="$(su - zimbra -c "echo | openssl s_client -servername zimbra.monomail.biz.tr -connect zimbra.monomail.biz.tr:443 2>/dev/null | openssl x509 -noout -dates")"
+    else
+        cert_info="$(su - zextras -c "echo | openssl s_client -servername zimbra.monomail.biz.tr -connect zimbra.monomail.biz.tr:443 2>/dev/null | openssl x509 -noout -dates")"
+    fi
+    if [ -z "$cert_info" ]; then
+        echo "Couldn't get cert info."
+        alarm_check_down "ssl-expire" "Couldn't get cert info."
+        return
+    fi
+    expiry_date=$(echo "$cert_info" | grep "notAfter" | cut -d'=' -f2)
+    expiry_timestamp=$(date -d "$expiry_date" +%s)
+    current_timestamp=$(date +%s)
+    remaining_seconds=$((expiry_timestamp - current_timestamp))
+    days_to_expiry=$((remaining_seconds / 86400))
+    if [ $days_to_expiry -lt 10 ]; then
+        alarm_check_down "ssl-expire" "SSl expiration: $days_to_expiry days left"
+        print_colour "SSl expiration" "$days_to_expiry days" "error"
+    else
+        alarm_check_up "ssl-expire" "SSl expiration: $days_to_expiry days left"
+        print_colour "SSl expiration" "$days_to_expiry days"
+    fi
+}
+
 function main() {
     create_pid
     printf '\n'
@@ -253,6 +225,8 @@ function main() {
     fi
     printf '\n'
     queued_messages
+    printf '\n'
+    check_ssl
 
     rm -rf "$TMP_PATH_SCRIPT"/zimbra_session_*_status.txt
 }
