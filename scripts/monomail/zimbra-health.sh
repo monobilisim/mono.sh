@@ -187,9 +187,11 @@ function check_install() {
 function check_ssl() {
     echo_status "SSL Expiration"
     if id "zimbra" &>/dev/null; then
-        cert_info="$(su - zimbra -c "echo | openssl s_client -servername zimbra.monomail.biz.tr -connect zimbra.monomail.biz.tr:443 2>/dev/null | openssl x509 -noout -dates")"
+        MAIL_HOST="$(su - zimbra -c "zmprov gs $(su - zimbra -c zmhostname) | grep zimbraServiceHostname" | awk '{print $NF}')"
+        cert_info="$(su - zimbra -c "echo | openssl s_client -servername $MAIL_HOST -connect $MAIL_HOST:443 2>/dev/null | openssl x509 -noout -dates")"
     else
-        cert_info="$(su - zextras -c "echo | openssl s_client -servername zimbra.monomail.biz.tr -connect zimbra.monomail.biz.tr:443 2>/dev/null | openssl x509 -noout -dates")"
+        MAIL_HOST="$(su - zextras -c "zmprov gs $(su - zextras -c zmhostname) | grep zimbraServiceHostname" | awk '{print $NF}')"
+        cert_info="$(su - zextras -c "echo | openssl s_client -servername $MAIL_HOST -connect $MAIL_HOST:443 2>/dev/null | openssl x509 -noout -dates")"
     fi
     if [ -z "$cert_info" ]; then
         echo "Couldn't get cert info."
