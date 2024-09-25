@@ -307,6 +307,32 @@ function cluster_status() {
     echo "$output" | jq >"$TMP_PATH_SCRIPT"/raw_output.json
 }
 
+function wal-g_verify() {
+    echo_status "wal-verify integrity timeline"
+    verify_out="$(su - postgres -c "wal-g wal-verify integrity timeline")"
+    integrity_check="$(echo "$verify_out" | grep "integrity check status")"
+    timeline_check="$(echo "$verify_out" | grep "timeline check status")"
+
+    integrity_status="$(echo "$integrity_check" | awk '{print $NF}')"
+    timeline_status="$(echo "$timeline_check" | awk '{print $NF}')"
+
+    if [ "$integrity_status" != "OK" ]; then
+        alarm_check_down "integrity_check" "$integrity_check"
+        print_colour "Integrity" "$integrity_status" "error"
+    else
+        alarm_check_up "integrity_check" "$integrity_check"
+        print_colour "Integrity" "$integrity_status"
+    fi
+
+    if [ "$timeline_status" != "OK" ]; then
+        alarm_check_down "timeline_check" "$timeline_check"
+        print_colour "Timeline" "$timeline_status" "error"
+    else
+        alarm_check_up "timeline_check" "$timeline_check"
+        print_colour "Timeline" "$timeline_status"
+    fi
+}
+
 function main() {
     parse_config_pgsql
     create_pid
@@ -324,6 +350,16 @@ function main() {
     if [[ -n "$PATRONI_API" ]]; then
         printf '\n'
         cluster_status
+        role="$(curl -s "$PATRONI_API/patroni" | jq -r .role)"
+        if [ "$role" == "master" ] && [ -n "$(command -v wal-g)" ]; then
+            printf '\n'
+            wal-g_verify
+        fi
+    else
+        if [ -n "$(command -v wal-g)" ]; then
+            printf '\n'
+            wal-g_verify
+        fi
     fi
 }
 
