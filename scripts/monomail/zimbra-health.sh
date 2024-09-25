@@ -227,8 +227,10 @@ function main() {
     fi
     printf '\n'
     queued_messages
-    printf '\n'
-    check_ssl
+    if [ "$(date "+%H:%M")" == "01:00" ]; then
+        printf '\n'
+        check_ssl
+    fi
 
     rm -rf "$TMP_PATH_SCRIPT"/zimbra_session_*_status.txt
 }
