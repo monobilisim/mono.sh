@@ -2,7 +2,7 @@
 ###~ description: Checks the status of MySQL and MySQL cluster
 
 #shellcheck disable=SC2034
-VERSION=v2.9.1
+VERSION=v2.9.2
 SCRIPT_NAME="mysql-health"
 SCRIPT_NAME_PRETTY="MySQL Health"
 
@@ -119,9 +119,9 @@ function check_issue_exists() {
         # Should result in test-test2-test
         IDENTIFIER_REDMINE=$(echo "$IDENTIFIER" | sed 's/[0-9]*$//')
     fi
-    
+
     if [[ ! -f /tmp/mono/mysql-cluster-size-redmine.log ]]; then
-        if monokit redmine issue exists --subject "Cluster size is $no_cluster at $IDENTIFIER_REDMINE" --date "$(date +"%Y-%m-%d")" >"$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log; then
+        if monokit redmine issue exists --subject "MySQL Cluster boyutu: 1 - $IDENTIFIER_REDMINE" --date "$(date +"%Y-%m-%d")" >"$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log; then
             ISSUE_ID=$(cat "$TMP_PATH_SCRIPT"/mysql-cluster-size-redmine.log)
         fi
 
@@ -132,7 +132,6 @@ function check_issue_exists() {
         fi
     fi
 }
-
 
 function check_cluster_status() {
     echo_status "Cluster Status:"
@@ -147,25 +146,27 @@ function check_cluster_status() {
         IDENTIFIER_REDMINE=$(echo "$IDENTIFIER" | sed 's/[0-9]*$//')
     fi
 
+    cluster_out="$(mariadb -e "show variables like 'wsrep_cluster_address';")"
+
     if [ "$no_cluster" -eq "$CLUSTER_SIZE" ]; then
         alarm_check_up "cluster_size" "Cluster size is accurate: $no_cluster/$CLUSTER_SIZE"
-        monokit redmine issue up --service "mysql-cluster-size" --message "MySQL cluster size is $no_cluster at $IDENTIFIER_REDMINE"
+        monokit redmine issue up --service "mysql-cluster-size" --message "MySQL Cluster boyutu: $no_cluster - $IDENTIFIER<br />$cluster_out"
         print_colour "Cluster size" "$no_cluster/$CLUSTER_SIZE"
     elif [ -z "$no_cluster" ]; then
         alarm_check_down "cluster_size" "Couldn't get cluster size: $no_cluster/$CLUSTER_SIZE"
         check_issue_exists
-        monokit redmine issue update --service "mysql-cluster-size" --message "Couldn't get cluster size with command: \"mysql -sNe \"SHOW STATUS WHERE Variable_name = 'wsrep_cluster_size';\"\"" --checkNote
+        monokit redmine issue update --service "mysql-cluster-size" --message "\"mysql -sNe \"SHOW STATUS WHERE Variable_name = 'wsrep_cluster_size';\"\" komutu ile cluster boyutu alınamadı - $IDENTIFIER<br />$cluster_out" --checkNote
         print_colour "Cluster size" "Couln't get" "error"
     else
         alarm_check_down "cluster_size" "Cluster size is not accurate: $no_cluster/$CLUSTER_SIZE"
         check_issue_exists
-        monokit redmine issue update --service "mysql-cluster-size" --message "MySQL cluster size is $no_cluster at $IDENTIFIER_REDMINE" --checkNote
+        monokit redmine issue update --service "mysql-cluster-size" --message "MySQL Cluster boyutu: $no_cluster - $IDENTIFIER<br />$cluster_out" --checkNote
         print_colour "Cluster size" "$no_cluster/$CLUSTER_SIZE" "error"
     fi
 
     if [[ "$no_cluster" -eq 1 ]] || [[ "$no_cluster" -gt $CLUSTER_SIZE ]]; then
         check_issue_exists
-        monokit redmine issue down --service "mysql-cluster-size" --subject "Cluster size is $no_cluster at $IDENTIFIER_REDMINE" --message "MySQL cluster size is $no_cluster at $IDENTIFIER"
+        monokit redmine issue down --service "mysql-cluster-size" --subject "MySQL Cluster boyutu: 1 - $IDENTIFIER_REDMINE" --message "MySQL Cluster boyutu: 1 - $IDENTIFIER<br />$cluster_out"
     fi
 }
 

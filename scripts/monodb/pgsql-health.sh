@@ -3,7 +3,7 @@
 #shellcheck disable=SC2034
 
 #~ variables
-VERSION="v2.8.1"
+VERSION="v2.8.2"
 SCRIPT_NAME=pgsql-health
 SCRIPT_NAME_PRETTY="PGSQL Health"
 
@@ -166,7 +166,7 @@ function check_issue_exists() {
     fi
 
     if [[ ! -f /tmp/mono/pgsql-cluster-size-redmine.log ]]; then
-        if monokit redmine issue exists --subject "PgSQL Cluster size is 1 at $IDENTIFIER_REDMINE" --date "$(date +"%Y-%m-%d")" >"$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log; then
+        if monokit redmine issue exists --subject "PgSQL Cluster boyutu: 1 - $IDENTIFIER_REDMINE" --date "$(date +"%Y-%m-%d")" >"$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log; then
             ISSUE_ID=$(cat "$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log)
         fi
 
