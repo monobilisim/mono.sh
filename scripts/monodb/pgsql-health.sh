@@ -271,6 +271,14 @@ function cluster_status() {
 
     patroni_list_out="$(patronictl list)"
 
+    # Remove the first line
+    patroni_list_out="$(echo "$patroni_list_out" | sed '1d')"
+
+
+    # Remove the third line, and replace it with |--|--|--|--|--|--|--|
+    patroni_list_out="$(echo "$patroni_list_out" | sed '3d' | sed '2s/.*/\|--\|--\|--\|--\|--\|--\|--\|/')"
+
+
     if [ -f "$TMP_PATH_SCRIPT"/raw_output_original.json ] && [ "$(jq .locked /tmp/mono/pgsql-cluster-size-redmine-stat.log)" == "true" ]; then
         mapfile -t old_cluster_names < <(jq -r '.members[] | .name ' <"$TMP_PATH_SCRIPT"/raw_output_original.json)
         mapfile -t cluster_difference < <(echo "${old_cluster_names[@]}" "${running_clusters[@]}" | tr ' ' '\n' | sort | uniq -u)
