@@ -282,11 +282,11 @@ function cluster_status() {
             rm -rf "$TMP_PATH_SCRIPT"/raw_output_original.json
         else
             if [ ${#running_clusters[@]} -eq ${#old_cluster_names[@]} ]; then
-                monokit redmine issue up --service "pgsql-cluster-size" --message "Patroni cluster boyutu: ${#running_clusters[@]} - $IDENTIFIER.<br />Aktif sunucular:<br />${running_clusters[*]}<br />$patroni_list_out"
+                monokit redmine issue up --service "pgsql-cluster-size" --message "Patroni cluster boyutu: ${#running_clusters[@]} - $IDENTIFIER.<br />Aktif sunucular:<br />${running_clusters[*]}<br />\n\n$patroni_list_out"
                 rm -rf "$TMP_PATH_SCRIPT"/raw_output_original.json
             else
                 check_issue_exists
-                monokit redmine issue update --service "pgsql-cluster-size" --message "Patroni cluster boyutu: ${#running_clusters[@]} - $IDENTIFIER.<br />Aktif sunucular:<br />${running_clusters[*]}<br />Kapalı sunucular:<br />${cluster_difference[*]}<br />$patroni_list_out" --checkNote
+                monokit redmine issue update --service "pgsql-cluster-size" --message "Patroni cluster boyutu: ${#running_clusters[@]} - $IDENTIFIER.<br />Aktif sunucular:<br />${running_clusters[*]}<br />Kapalı sunucular:<br />${cluster_difference[*]}<br />\n\n$patroni_list_out" --checkNote
             fi
         fi
     else
@@ -301,7 +301,7 @@ function cluster_status() {
             running_clusters=("${running_clusters[@]/#/\&nbsp;\ \ -\ }")
             running_clusters=("${running_clusters[@]/%/\&nbsp;\ \ <br\ \/>}")
             check_issue_exists
-            monokit redmine issue down --service "pgsql-cluster-size" --subject "PgSQL Cluster boyutu: 1 - $IDENTIFIER_REDMINE" --message "Patroni cluster boyutu: 1 - $IDENTIFIER.<br />Aktif sunucu:<br />${running_clusters[*]}<br />Kapalı sunucular:<br />${cluster_difference[*]}<br />$patroni_list_out"
+            monokit redmine issue down --service "pgsql-cluster-size" --subject "PgSQL Cluster boyutu: 1 - $IDENTIFIER_REDMINE" --message "Patroni cluster boyutu: 1 - $IDENTIFIER.<br />Aktif sunucu:<br />${running_clusters[*]}<br />Kapalı sunucular:<br />${cluster_difference[*]}<br />\n\n$patroni_list_out"
         fi
     fi
     echo "$output" | jq >"$TMP_PATH_SCRIPT"/raw_output.json
