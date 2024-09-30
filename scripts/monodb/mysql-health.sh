@@ -2,7 +2,7 @@
 ###~ description: Checks the status of MySQL and MySQL cluster
 
 #shellcheck disable=SC2034
-VERSION=v2.9.2
+VERSION=v2.9.3
 SCRIPT_NAME="mysql-health"
 SCRIPT_NAME_PRETTY="MySQL Health"
 
@@ -23,6 +23,24 @@ SCRIPTPATH="$(
 create_tmp_dir
 
 cron_mode "$ENABLE_CRON"
+
+if [ -n "$(command -v mariadb)" ]; then
+    mysql_exe="mariadb"
+else
+    mysql_exe="mysql"
+fi
+
+if [ -n "$(command -v mariadb-admin)" ]; then
+    mysql_admin_exe="mariadb-admin"
+else
+    mysql_admin_exe="mysqladmin"
+fi
+
+if [ -n "$(command -v mariadb-check)" ]; then
+    mysql_check_exe="mariadb-check"
+else
+    mysql_check_exe="mysqlcheck"
+fi
 
 function parse_config_mysql() {
     CONFIG_PATH_MONODB="db"
@@ -46,7 +64,7 @@ function containsElement() {
 
 function select_now() {
     echo_status "MySQL Access:"
-    if mysql -sNe "SELECT NOW();" >/dev/null; then
+    if $mysql_exe -sNe "SELECT NOW();" >/dev/null; then
         alarm_check_up "now" "Can run 'SELECT' statements again"
         print_colour "MySQL" "accessible"
     else
@@ -58,12 +76,12 @@ function select_now() {
 
 function write_processlist() {
     mkdir -p /var/log/monodb
-    mysql -e "SELECT * FROM INFORMATION_SCHEMA.PROCESSLIST WHERE USER != 'root' ORDER BY TIME DESC;" >/var/log/monodb/mysql-processlist-"$(date +"%a")".log
+    $mysql_exe -e "SELECT * FROM INFORMATION_SCHEMA.PROCESSLIST WHERE USER != 'root' ORDER BY TIME DESC;" >/var/log/monodb/mysql-processlist-"$(date +"%a")".log
 }
 
 function check_process_count() {
     echo_status "Number of Processes:"
-    processlist_count=$(/usr/bin/mysqladmin processlist | grep -vc 'show processlist')
+    processlist_count=$(/usr/bin/$mysql_admin_exe processlist | grep -vc 'show processlist')
     file="$TMP_PATH_SCRIPT/processlist.txt"
     if [ -f "$file" ]; then
         increase=$(cat "$file")
@@ -92,7 +110,7 @@ function check_process_count() {
 }
 
 function inaccessible_clusters() {
-    listening_clusters=$(mysql -sNe "SHOW STATUS WHERE Variable_name = 'wsrep_incoming_addresses';" | awk '{print $2}' | sed 's/,/\ /g')
+    listening_clusters=$($mysql_exe -sNe "SHOW STATUS WHERE Variable_name = 'wsrep_incoming_addresses';" | awk '{print $2}' | sed 's/,/\ /g')
     # shellcheck disable=SC2206
     listening_clusters_array=($listening_clusters)
 
@@ -135,7 +153,7 @@ function check_issue_exists() {
 
 function check_cluster_status() {
     echo_status "Cluster Status:"
-    cluster_status=$(mysql -sNe "SHOW STATUS WHERE Variable_name = 'wsrep_cluster_size';")
+    cluster_status=$($mysql_exe -sNe "SHOW STATUS WHERE Variable_name = 'wsrep_cluster_size';")
     no_cluster=$(echo "$cluster_status" | awk '{print $2}')
 
     IDENTIFIER_REDMINE=$(echo "$IDENTIFIER" | cut -d'-' -f1-2)
@@ -171,7 +189,7 @@ function check_cluster_status() {
 }
 
 function check_node_status() {
-    output=$(mysql -sNe "SHOW STATUS WHERE Variable_name = 'wsrep_ready';")
+    output=$($mysql_exe -sNe "SHOW STATUS WHERE Variable_name = 'wsrep_ready';")
     name=$(echo "$output" | awk '{print $1}')
     is_available=$(echo "$output" | awk '{print $2}')
     if [ -n "$is_available" ]; then
@@ -187,7 +205,7 @@ function check_node_status() {
 }
 
 function check_cluster_synced() {
-    output=$(mysql -sNe "SHOW STATUS WHERE Variable_name = 'wsrep_local_state_comment';")
+    output=$($mysql_exe -sNe "SHOW STATUS WHERE Variable_name = 'wsrep_local_state_comment';")
     name=$(echo "$output" | awk '{print $1}')
     is_synced=$(echo "$output" | awk '{print $2}')
     if [ -n "$is_synced" ]; then
@@ -203,7 +221,7 @@ function check_cluster_synced() {
 }
 
 function check_flow_control() {
-    output=$(mysql -sNe "SHOW STATUS WHERE Variable_name = 'wsrep_flow_control_paused';")
+    output=$($mysql_exe -sNe "SHOW STATUS WHERE Variable_name = 'wsrep_flow_control_paused';")
     name=$(echo "$output" | awk '{print $1}')
     stop_time=$(echo "$output" | awk '{print $2}' | cut -c 1)
     if [ "$stop_time" -gt 0 ]; then
@@ -216,11 +234,11 @@ function check_flow_control() {
 }
 
 function check_db() {
-    check_out=$(mysqlcheck --auto-repair --all-databases)
+    check_out=$($mysql_check_exe --auto-repair --all-databases)
     tables=$(echo "$check_out" | sed -n '/Repairing tables/,$p' | tail -n +2)
     message=""
     if [ -n "$tables" ]; then
-        message="[MySQL - $IDENTIFIER] [:info:] MySQL - \`mysqlcheck --auto-repair --all-databases\` result"
+        message="[MySQL - $IDENTIFIER] [:info:] MySQL - \`$mysql_check_exe --auto-repair --all-databases\` result"
     fi
     oldIFS=$IFS
     IFS=$'\n'
