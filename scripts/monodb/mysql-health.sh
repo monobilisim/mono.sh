@@ -139,7 +139,7 @@ function check_issue_exists() {
     fi
 
     if [[ ! -f /tmp/mono/mysql-cluster-size-redmine.log ]]; then
-        if monokit redmine issue exists --subject "MySQL Cluster boyutu: 1 - $IDENTIFIER_REDMINE" --date "$(date +"%Y-%m-%d")" >"$TMP_PATH_SCRIPT"/pgsql-cluster-size-redmine.log; then
+        if monokit redmine issue exists --subject "MySQL Cluster boyutu: 1 - $IDENTIFIER_REDMINE" --date "$(date +"%Y-%m-%d")" >"$TMP_PATH_SCRIPT"/mysql-cluster-size-redmine.log; then
             ISSUE_ID=$(cat "$TMP_PATH_SCRIPT"/mysql-cluster-size-redmine.log)
         fi
 
