@@ -120,7 +120,7 @@ function inaccessible_clusters() {
         old_clusters=($(cat "$file"))
         for cluster in "${old_clusters[@]}"; do
             if containsElement "$cluster" "${listening_clusters_array[@]}"; then
-                continue
+                alarm_check_up "$cluster" "Node $cluster is back in cluster."
             else
                 alarm_check_down "$cluster" "Node $cluster is no longer in the cluster."
             fi
@@ -164,7 +164,8 @@ function check_cluster_status() {
         IDENTIFIER_REDMINE=$(echo "$IDENTIFIER" | sed 's/[0-9]*$//')
     fi
 
-    cluster_out="$(mariadb -e "show variables like 'wsrep_cluster_address';")"
+    cluster_out_tmp="$(mariadb -sNe "show variables like 'wsrep_cluster_address';")"
+    cluster_out="\`$(echo "$cluster_out_tmp" | awk '{print $1}'): $(echo "$cluster_out_tmp" | awk '{print $2}')\`"
 
     if [ "$no_cluster" -eq "$CLUSTER_SIZE" ]; then
         alarm_check_up "cluster_size" "Cluster size is accurate: $no_cluster/$CLUSTER_SIZE"
