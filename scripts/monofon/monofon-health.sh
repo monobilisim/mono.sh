@@ -269,9 +269,9 @@ function check_trunks() {
 
 function asterisk_error_check() {
     if tail /var/log/asterisk/full | grep -q Autodestruct; then
-        alarm_check_down "autodestruct" "Found \"Autodestruct\" at log: /var/log/asterisk/full - Server: $IDENTIFIER"
+        alarm "[$SCRIPT_NAME_PRETTY - $IDENTIFIER] [:red_circle:] Found \"Autodestruct\" at log: /var/log/asterisk/full"
     # else
-    #     alarm_check_up "autodestruct" ""
+    #     alarm_check_up "autodestruct" "No \"Autodestruct\" at log: /var/log/asterisk/full - Server: $IDENTIFIER"
     fi
 
     if [ $((10#$(date +%M) % 5)) -eq 0 ]; then
