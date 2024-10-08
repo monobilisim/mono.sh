@@ -118,7 +118,7 @@ getlogininfo() {
 
     if [[ -n "${EXCLUDE_USERS[*]}" ]]; then
         for exclude_user in "${EXCLUDE_USERS[@]}"; do
-            if [[ "$user" == "$exclude_user" && -n "$user" ]]; then
+            if [[ "${user:-$PAM_USER}" == "$exclude_user" && -n "${user-$PAM_USER}" ]]; then
                 return
             fi
         done
