@@ -5,7 +5,6 @@
 | [ssh-notifier.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/ssh-notifier.sh) | This script is used to alert whenever a ssh session is started |
 | [ufw-applier.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/ufw-applier.sh) | This script is used to apply ufw rules to the system |
 | [wppconnect-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/wppconnect-health.sh) | Check the status of WPPConnect sessions |
-| [mysql-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/mysql-health.sh) | Checks the status of MySQL and MySQL cluster |
 | [pgsql-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/pgsql-health.sh) | Checks the status of PostgreSQL and Patroni cluster |
 | [monofon-health.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/monofon-health.sh) | Checks the status of monofon and related services |
 | [rename_agent.sh](https://github.com/monobilisim/mono.sh/blob/main/scripts/rename_agent.sh) | Rename a agent in Asterisk |
