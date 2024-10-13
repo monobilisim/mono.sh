@@ -20,7 +20,7 @@ function parse_config_patronileadercheck() {
     CONFIG_PATH_PATRONILEADERCHECK="patroni-leader-check"
     export REQUIRED=true
 
-    CF_API_TOKEN=$(yaml .cloudflare.token $CONFIG_PATH_PATRONILEADERCHECK)
+    export CF_API_TOKEN=$(yaml .cloudflare.token $CONFIG_PATH_PATRONILEADERCHECK)
 
     CF_ZONE_NAME=$(yaml .cloudflare.zone_name $CONFIG_PATH_PATRONILEADERCHECK)
 
@@ -31,6 +31,8 @@ function parse_config_patronileadercheck() {
     REDIS_PORT=$(yaml .redis.sentinel_port $CONFIG_PATH_PATRONILEADERCHECK "26379")
 
     MASTER_NAME=$(yaml .redis.master_name $CONFIG_PATH_PATRONILEADERCHECK "mymaster")
+
+    record_id=$(yaml .cloudflare.record_id $CONFIG_PATH_PATRONILEADERCHECK)
 
 }
 
@@ -84,11 +86,9 @@ if [ "$response_code" -eq 200 ]; then
     monokit alarm send --message "[patroni-leader-check] [:check:] Redis promoted to master on hostname $(hostname) with redis address $REDIS_ADDR"
 
 
-    current_record=$(host -ta "$DOMAIN" 1.1.1.1 | tail -1 | awk '{print $4}')
-    record_id=$(echo "$current_record" | awk '{print $1}')
-    current_ip=$(echo "$current_record" | awk '{for(i=1;i<=NF;i++) if($i ~ /^10\./) print $i; exit}')
+    current_ip=$(host -ta "$DOMAIN" 1.1.1.1 | tail -1 | awk '{print $4}')
 
-    echo "Extracted Record ID: '$record_id'"
+    echo "Record ID: '$record_id'"
     echo "Current IP: '$current_ip'"
 
     new_ip="$PATRONI_IP"
