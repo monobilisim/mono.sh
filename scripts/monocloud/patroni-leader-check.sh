@@ -49,7 +49,7 @@ force_failover() {
 
 
 alarm_exit() {
-    monokit alarm send --message "[patroni-leader-check] [:x:] $1"
+    monokit alarm send --message "[patroni-leader-check] [:red_circle:] $1"
     exit 1
 }
 
