@@ -84,7 +84,7 @@ if [ "$response_code" -eq 200 ]; then
     monokit alarm send --message "[patroni-leader-check] [:check:] Redis promoted to master on hostname $(hostname) with redis address $REDIS_ADDR"
 
 
-    current_record=$(/usr/local/bin/flarectl dns list --zone "$CF_ZONE_NAME" --type "A" | grep "$DOMAIN")
+    current_record=$(host -ta "$DOMAIN" | awk '{print $4}')
     record_id=$(echo "$current_record" | awk '{print $1}')
     current_ip=$(echo "$current_record" | awk '{for(i=1;i<=NF;i++) if($i ~ /^10\./) print $i; exit}')
 
