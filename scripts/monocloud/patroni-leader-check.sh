@@ -104,6 +104,7 @@ if [ "$response_code" -eq 200 ]; then
         echo "Updating DNS record from $current_ip to $new_ip"
         # Update DNS record
         /usr/local/bin/flarectl dns update --zone "$CF_ZONE_NAME" --id "$record_id" --name "$DOMAIN" --content "$new_ip" --type "A" || alarm_exit "Could not update DNS record for $DOMAIN"
+        monokit alarm send --message "[patroni-leader-check] [:check:] DNS record updated for $DOMAIN from $current_ip to $new_ip"
     else
         echo "IP address has not changed. No update required."
     fi
