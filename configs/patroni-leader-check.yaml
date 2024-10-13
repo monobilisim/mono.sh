@@ -1,0 +1,9 @@
+redis:
+  addr: "redis1.test.com"
+  master_name: "mymaster"
+
+cloudflare:
+  token: "testTokenReplaceMe"
+  zone_name: "test.com"
+
+haproxy_domain: "haproxy.test.com"
