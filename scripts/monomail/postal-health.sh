@@ -62,10 +62,10 @@ main_db_user=$(yq -r .main_db.username $postal_config)
 main_db_pass=$(yq -r .main_db.password $postal_config)
 if ! main_db_status=$(mysqladmin -h"$main_db_host" -P"$main_db_port" -u"$main_db_user" -p"$main_db_pass" ping 2>&1); then
     alarm_check_down "maindb" "Can't connect to main_db at host $main_db_host with the parameters on $postal_config at $IDENTIFIER"
-    monokit redmine issue create --service "postal-maindb" --subject "Can't connect to main_db at host $main_db_host" --message "Can't connect to main_db at host $main_db_host with the parameters on $postal_config at $IDENTIFIER"
+    monokit redmine issue down --service "postal-maindb" --subject "Can't connect to main_db at host $main_db_host" --message "Can't connect to main_db at host $main_db_host with the parameters on $postal_config at $IDENTIFIER"
 else
     alarm_check_up "maindb" "Able to connect main_db at host $main_db_host at $IDENTIFIER"
-    monokit redmine issue close --service "postal-maindb" --message "Able to connect main_db at host $main_db_host at $IDENTIFIER"
+    monokit redmine issue up --service "postal-maindb" --message "Able to connect main_db at host $main_db_host at $IDENTIFIER"
 fi
 
 # ------- MySQL message_db stats -------
@@ -78,10 +78,10 @@ message_db_user=$(yq -r .message_db.username $postal_config)
 message_db_pass=$(yq -r .message_db.password $postal_config)
 if ! message_db_status=$(mysqladmin -h"$message_db_host" -P"$message_db_port" -u"$message_db_user" -p"$message_db_pass" ping 2>&1); then
     alarm_check_down "messagedb" "Can't connect to messagedb at host $message_db_host with the parameters on $postal_config at $IDENTIFIER"
-    monokit redmine issue create --service "postal-messagedb" --subject "Can't connect to messagedb at host $message_db_host" --message "Can't connect to messagedb at host $message_db_host with the parameters on $postal_config at $IDENTIFIER"
+    monokit redmine issue down --service "postal-messagedb" --subject "Can't connect to messagedb at host $message_db_host" --message "Can't connect to messagedb at host $message_db_host with the parameters on $postal_config at $IDENTIFIER"
 else
     alarm_check_up "messagedb" "Able to connect messagedb at host $message_db_host at $IDENTIFIER"
-    monokit redmine issue close --service "postal-messagedb" --message "Able to connect messagedb at host $message_db_host at $IDENTIFIER"
+    monokit redmine issue up --service "postal-messagedb" --message "Able to connect messagedb at host $message_db_host at $IDENTIFIER"
 fi
 
 fnServices() {
