@@ -118,17 +118,18 @@ getlogininfo() {
 
     if [[ -n "${EXCLUDE_USERS[*]}" ]]; then
         for exclude_user in "${EXCLUDE_USERS[@]}"; do
+            usertmp="${user:-$PAM_USER}"
             # if $user has @ in it
-            if [[ "${user:-$PAM_USER}" =~ "@" ]]; then
+            if [[ "$usertmp" =~ "@" ]]; then
                 # Remove everything after and including @
                 if [[ -n "$user" ]]; then
-                    user="${user%%@*}"
+                    usertmp="${user%%@*}"
                 else
-                    user="${PAM_USER%%@*}"
+                    usertmp="${PAM_USER%%@*}"
                 fi
             fi
 
-            if [[ "${user:-$PAM_USER}" == "$exclude_user" && -n "${user-$PAM_USER}" ]]; then
+            if [[ "$usertmp" == "$exclude_user" && -n "$usertmp" ]]; then
                 return
             fi
         done
