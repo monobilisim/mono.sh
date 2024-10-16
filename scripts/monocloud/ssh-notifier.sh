@@ -7,7 +7,7 @@ exec &>/var/log/ssh-notifier.log
 
 #~ variables
 #shellcheck disable=SC2034
-script_version="v2.0.0"
+script_version="v2.0.1"
 
 #shellcheck disable=SC2034
 SCRIPT_NAME=ssh-notifier
@@ -118,6 +118,16 @@ getlogininfo() {
 
     if [[ -n "${EXCLUDE_USERS[*]}" ]]; then
         for exclude_user in "${EXCLUDE_USERS[@]}"; do
+            # if $user has @ in it
+            if [[ "${user:-$PAM_USER}" =~ "@" ]]; then
+                # Remove everything after and including @
+                if [[ -n "$user" ]]; then
+                    user="${user%%@*}"
+                else
+                    user="${PAM_USER%%@*}"
+                fi
+            fi
+
             if [[ "${user:-$PAM_USER}" == "$exclude_user" && -n "${user-$PAM_USER}" ]]; then
                 return
             fi
