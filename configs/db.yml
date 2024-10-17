@@ -1,0 +1,9 @@
+postgres:
+  limits:
+    process: 50
+    query: 25
+    conn_percent: 70
+  alarm:
+    enabled: true
+  leader_switch_hook: "echo 'leader switch'"
+  wal-g_verify_hour: "03:00"

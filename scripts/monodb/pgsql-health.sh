@@ -37,6 +37,8 @@ function parse_config_pgsql() {
 
     LEADER_SWITCH_HOOK=$(yaml .postgres.leader_switch_hook $CONFIG_PATH_MONODB "")
 
+    WALG_VERIFY_HOUR=$(yaml .postgres.wal-g_verify_hour $CONFIG_PATH_MONODB "")
+
     if [ -z "$PATRONI_API" ] && [ -f /etc/patroni/patroni.yml ]; then
         PATRONI_API="$(yq -r .restapi.connect_address /etc/patroni/patroni.yml)"
     fi
@@ -353,16 +355,21 @@ function main() {
     check_active_connections
     printf '\n'
     check_running_queries
+
+    if [ -z "$WALG_VERIFY_HOUR" ]; then
+        WALG_VERIFY_HOUR="03:00"
+    fi
+
     if [[ -n "$PATRONI_API" ]]; then
         printf '\n'
         cluster_status
         role="$(curl -s "$PATRONI_API/patroni" | jq -r .role)"
-        if [ "$role" == "master" ] && [ -n "$(command -v wal-g)" ]; then
+        if [ "$role" == "master" ] && [ -n "$(command -v wal-g)" ] && [[ "$(date "+%H:%M")" == "$WALG_VERIFY_HOUR" ]]; then
             printf '\n'
             wal-g_verify
         fi
     else
-        if [ -n "$(command -v wal-g)" ]; then
+        if [ -n "$(command -v wal-g)" ] && [[ "$(date "+%H:%M")" == "$WALG_VERIFY_HOUR" ]]; then
             printf '\n'
             wal-g_verify
         fi
