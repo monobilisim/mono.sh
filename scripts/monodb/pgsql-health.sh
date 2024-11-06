@@ -3,7 +3,7 @@
 #shellcheck disable=SC2034
 
 #~ variables
-VERSION="v2.8.2"
+VERSION="v2.9.0"
 SCRIPT_NAME=pgsql-health
 SCRIPT_NAME_PRETTY="PGSQL Health"
 
@@ -327,17 +327,34 @@ function wal-g_verify() {
     if [ "$integrity_status" != "OK" ]; then
         alarm_check_down "integrity_check" "$integrity_check"
         print_colour "Integrity" "$integrity_status" "error"
+        monokit redmine issue down --service "integrity_check_issue" --subject "wal-g wal-verify integrity timeline status - Integrity" --message "Integrity status is $integrity_status" 
     else
         alarm_check_up "integrity_check" "$integrity_check"
         print_colour "Integrity" "$integrity_status"
+        monokit redmine issue up --service "integrity_check_issue" --message "Integrity status is $integrity_status" 
     fi
 
     if [ "$timeline_status" != "OK" ]; then
         alarm_check_down "timeline_check" "$timeline_check"
         print_colour "Timeline" "$timeline_status" "error"
+        monokit redmine issue down --service "timeline_check_issue" --subject "wal-g wal-verify integrity timeline status - Timeline" --message "Timeline status is $timeline_status" 
     else
         alarm_check_up "timeline_check" "$timeline_check"
         print_colour "Timeline" "$timeline_status"
+        monokit redmine issue up --service "timeline_check_issue" --message "Timeline status is $timeline_status" 
+    fi
+}
+
+function check_pmm() {
+    echo_status "PMM Status"
+    if dpkg -s pmm2-client >/dev/null 2>&1; then
+        if systemctl status pmm-agent.service &>/dev/null; then
+            print_colour "PMM Agent" "Active"
+            alarm_check_up "pgsql-pmm-agent" "PMM Agent is active again!"
+        else
+            print_colour "PMM Agent" "is not active" "error"
+            alarm_check_down "pgsql-pmm-agent" "PMM Agent is not active!"
+        fi
     fi
 }
 
@@ -374,6 +391,9 @@ function main() {
             wal-g_verify
         fi
     fi
+
+    printf '\n'
+    check_pmm
 }
 
 main
