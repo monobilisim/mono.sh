@@ -32,6 +32,8 @@ function parse_config_patronileadercheck() {
 
     MASTER_NAME=$(yaml .redis.master_name $CONFIG_PATH_PATRONILEADERCHECK "mymaster")
 
+	REDIS_FAILOVER_FORCE=$(yaml .redis.failover_force $CONFIG_PATH_PATRONILEADERCHECK "false")
+
     record_id=$(yaml .cloudflare.record_id $CONFIG_PATH_PATRONILEADERCHECK)
 
 }
@@ -69,22 +71,23 @@ if [ "$response_code" -eq 200 ]; then
     if [ "$redis_master_ip" == "$(dig +short "$REDIS_ADDR")" ]; then
         echo "Redis role is master already."
         exit
-    fi
+	fi
+	
+	if [ "$REDIS_FAILOVER_FORCE" == "1" ]; then
+    	echo "Redis role is not master. Promoting to master."
 
-    echo "Redis role is not master. Promoting to master."
+    	force_failover
 
-    force_failover
+    	# Check redis role again
+    	redis_master_ip="$(get_master)"
 
-    # Check redis role again
-    redis_master_ip="$(get_master)"
+    	if [ "$redis_master_ip" != "$(dig +short "$REDIS_ADDR")" ]; then
+        	echo "Redis could not be promoted to master."
+        	alarm_exit "Redis could not be promoted to master on $(hostname)"
+    	fi
 
-    if [ "$redis_master_ip" != "$(dig +short "$REDIS_ADDR")" ]; then
-        echo "Redis could not be promoted to master."
-        alarm_exit "Redis could not be promoted to master on $(hostname)"
-    fi
-
-    monokit alarm send --message "[patroni-leader-check] [:check:] Redis promoted to master on hostname $(hostname) with redis address $REDIS_ADDR"
-
+    	monokit alarm send --message "[patroni-leader-check] [:check:] Redis promoted to master on hostname $(hostname) with redis address $REDIS_ADDR"
+	fi	
 
     current_ip=$(host -ta "$DOMAIN" 1.1.1.1 | tail -1 | awk '{print $4}')
 

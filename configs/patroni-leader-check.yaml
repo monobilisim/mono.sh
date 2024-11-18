@@ -1,6 +1,7 @@
 redis:
   addr: "redis1.test.com"
   master_name: "mymaster"
+  failover_force: "False"
 
 cloudflare:
   token: "testTokenReplaceMe"
