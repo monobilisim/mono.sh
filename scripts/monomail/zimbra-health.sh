@@ -150,6 +150,70 @@ function check_zimbra_services() {
 
 function check_z-push() {
     echo_status "Checking Z-Push:"
+    FILE='/opt/zimbra/conf/nginx/templates/nginx.conf.web.https.default.template'
+
+    if [[ ! -f "/etc/nginx-php-fpm.conf" ]]; then
+        echo "Z-Push is not installed on the Zimbra server."
+        return
+    fi
+
+    if [[ $(grep "nginx-php-fpm.conf" $FILE) ]]; then
+        echo "Zimbra Proxy'de Z-Push için gerekli ayar mevcut."
+    else
+
+        sed -i '/Microsoft-Server-ActiveSync/,${
+/proxy_pass/{
+x
+//{
+x
+b
+}
+g
+s/proxy_pass/### proxy_pass/
+}
+}' $FILE
+
+        sed -i '/Microsoft-Server-ActiveSync/,${
+/proxy_read_timeout/{
+x
+//{
+x
+b
+}
+g
+s/proxy_read_timeout/### proxy_read_timeout/
+}
+}' $FILE
+
+        sed -i '/Microsoft-Server-ActiveSync/,${
+/proxy_buffering/{
+x
+//{
+x
+b
+}
+g
+s/proxy_buffering/### proxy_buffering/
+}
+}' $FILE
+
+        sed -i '/Microsoft-Server-ActiveSync/,${
+/# For audit/{
+x
+//{
+x
+b
+}
+g
+s/# For audit/# Z-PUSH start\n        include \/etc\/nginx-php-fpm.conf;\n        # Z-PUSH end\n\n        # For audit/
+}
+}' $FILE
+
+        echo "Zimbra Proxy şablonuna Z-Push ayarı eklendi."
+
+        su - zimbra -c "zmproxyctl restart"
+    fi
+
     if curl -Isk "$Z_URL" | grep -i zpush >/dev/null; then
         alarm_check_up "z-push" "Z-Push started working"
         print_colour "Z-Push" "Working"
@@ -212,6 +276,43 @@ function check_ssl() {
     fi
 }
 
+function check_logo() {
+    newLogo1="/opt/zimbraLogo/logo300x.png"
+    newLogo2="/opt/zimbraLogo/logo200x.png"
+    logoPath="/opt/zimbra/jetty_base/webapps/zimbra/skins/_base/logos"
+    nameLogo1="AppBanner_white.png"
+    nameLogo2="AppBanner.png"
+    nameLogo3="LoginBanner_white.png"
+    nameLogo4="LoginBanner.png"
+    if test "$(find "$logoPath/AppBanner_white.png" -mmin +180)"; then
+        echo "Değiştirme tarihi 180 dakikadan eski"
+    else
+        echo "Değiştirme tarihi 180 dakikadan yeni"
+        mkdir -p $logoPath/oldLogo
+        mv $logoPath/$nameLogo1 $logoPath/oldLogo/$nameLogo1.back
+        mv $logoPath/$nameLogo3 $logoPath/oldLogo/$nameLogo3.back
+        mv $logoPath/$nameLogo2 $logoPath/oldLogo/$nameLogo2.back
+        mv $logoPath/$nameLogo4 $logoPath/oldLogo/$nameLogo4.back
+        chattr -i $newLogo1
+        chattr -i $newLogo2
+        mv $newLogo1 $logoPath/$nameLogo1
+        mv $newLogo1 $logoPath/$nameLogo2
+        mv $newLogo2 $logoPath/$nameLogo3
+        mv $newLogo2 $logoPath/$nameLogo4
+        chown zimbra:zimbra $logoPath/$nameLogo1
+        chown zimbra:zimbra $logoPath/$nameLogo2
+        chown zimbra:zimbra $logoPath/$nameLogo3
+        chown zimbra:zimbra $logoPath/$nameLogo4
+
+        su - zimbra -c '/opt/zimbra/bin/zmmailboxdctl restart'
+        sleep 3
+
+        chattr +i $newLogo1
+        chattr +i $newLogo2
+    fi
+
+}
+
 function main() {
     create_pid
     printf '\n'
@@ -231,6 +332,7 @@ function main() {
         printf '\n'
         check_ssl
     fi
+    check_logo
 
     rm -rf "$TMP_PATH_SCRIPT"/zimbra_session_*_status.txt
 }
