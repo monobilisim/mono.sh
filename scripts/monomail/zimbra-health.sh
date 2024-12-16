@@ -157,10 +157,7 @@ function check_z-push() {
         return
     fi
 
-    if [[ $(grep "nginx-php-fpm.conf" $FILE) ]]; then
-        echo "Zimbra Proxy'de Z-Push için gerekli ayar mevcut."
-    else
-
+    if [[ ! $(grep "nginx-php-fpm.conf" $FILE) ]]; then
         sed -i '/Microsoft-Server-ActiveSync/,${
 /proxy_pass/{
 x
@@ -277,6 +274,7 @@ function check_ssl() {
 }
 
 function check_logo() {
+    echo_status "Logo"
     newLogo1="/opt/zimbraLogo/logo300x.png"
     newLogo2="/opt/zimbraLogo/logo200x.png"
     logoPath="/opt/zimbra/jetty_base/webapps/zimbra/skins/_base/logos"
@@ -285,9 +283,9 @@ function check_logo() {
     nameLogo3="LoginBanner_white.png"
     nameLogo4="LoginBanner.png"
     if test "$(find "$logoPath/AppBanner_white.png" -mmin +180)"; then
-        echo "Değiştirme tarihi 180 dakikadan eski"
+        print_colour "Last change" "older than 180 minutes" "error"
     else
-        echo "Değiştirme tarihi 180 dakikadan yeni"
+        print_colour "Last change" "newer than 180 minutes"
         mkdir -p $logoPath/oldLogo
         mv $logoPath/$nameLogo1 $logoPath/oldLogo/$nameLogo1.back
         mv $logoPath/$nameLogo3 $logoPath/oldLogo/$nameLogo3.back
@@ -332,6 +330,7 @@ function main() {
         printf '\n'
         check_ssl
     fi
+    printf '\n'
     check_logo
 
     rm -rf "$TMP_PATH_SCRIPT"/zimbra_session_*_status.txt
