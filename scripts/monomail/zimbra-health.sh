@@ -330,8 +330,8 @@ function main() {
         printf '\n'
         check_ssl
     fi
-    printf '\n'
-    check_logo
+    #printf '\n'
+    #check_logo
 
     rm -rf "$TMP_PATH_SCRIPT"/zimbra_session_*_status.txt
 }
