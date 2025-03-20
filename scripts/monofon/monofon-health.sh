@@ -246,25 +246,55 @@ function check_concurrent_calls() {
 
 function check_trunks() {
     echo_status "Checking the statuses of the Trunks"
-    trunk_list=$(asterisk -rx "sip show peers" | grep -E '^[a-zA-Z]' | sed '1d')
+    
+    # Check if PJSIP is being used by trying to run a PJSIP command
+    if asterisk -rx "module show like pjsip" 2>/dev/null | grep -q "res_pjsip.so"; then
+        # PJSIP mode - use pjsip show contacts for a cleaner output
+        trunk_list=$(asterisk -rx "pjsip show contacts" | grep -E '^[[:space:]]*Contact:' | grep -v "Objects found" | sed '1d' | sed 's/^[[:space:]]*Contact:[[:space:]]*//')
 
-    OLDIFS=$IFS
-    IFS=$'\n'
-    for trunk in $trunk_list; do
-        trunk_status=$(echo "$trunk" | awk '{print $6}')
-        trunk_name=$(echo "$trunk" | awk '{print $1}')
-        if containsElement "$trunk_name" "${IGNORED_TRUNKS[@]}"; then
-            continue
-        fi
-        if [ "$trunk_status" != "OK" ]; then
-            print_colour "$trunk_name" "${trunk_status}" "error"
-            alarm_check_down "$trunk_name" "Trunk $trunk_name is ${trunk_status} at $IDENTIFIER" "trunk"
-        else
-            alarm_check_up "$trunk_name" "Trunk $trunk_name is ${trunk_status} again at $IDENTIFIER" "trunk"
-            print_colour "$trunk_name" "OK"
-        fi
-    done
-    IFS=$OLDIFS
+        OLDIFS=$IFS
+        IFS=$'\n'
+        for trunk in $trunk_list; do
+            # Extract trunk name and status from contact line
+            trunk_name=$(echo "$trunk" | awk '{print $1}' | cut -d'/' -f1)
+            trunk_status=$(echo "$trunk" | awk '{print $3}')
+            
+            if containsElement "$trunk_name" "${IGNORED_TRUNKS[@]}"; then
+                continue
+            fi
+            
+            # The status in pjsip show contacts is "Avail" instead of "OK"
+            if [ "$trunk_status" != "Avail" ] && [ "$trunk_status" != "Available" ]; then
+                print_colour "$trunk_name" "${trunk_status}" "error"
+                alarm_check_down "$trunk_name" "Trunk $trunk_name is ${trunk_status} at $IDENTIFIER" "trunk"
+            else
+                alarm_check_up "$trunk_name" "Trunk $trunk_name is OK again at $IDENTIFIER" "trunk"
+                print_colour "$trunk_name" "OK"
+            fi
+        done
+        IFS=$OLDIFS
+    else
+        # Original SIP mode
+        trunk_list=$(asterisk -rx "sip show peers" | grep -E '^[a-zA-Z]' | sed '1d')
+
+        OLDIFS=$IFS
+        IFS=$'\n'
+        for trunk in $trunk_list; do
+            trunk_status=$(echo "$trunk" | awk '{print $6}')
+            trunk_name=$(echo "$trunk" | awk '{print $1}')
+            if containsElement "$trunk_name" "${IGNORED_TRUNKS[@]}"; then
+                continue
+            fi
+            if [ "$trunk_status" != "OK" ]; then
+                print_colour "$trunk_name" "${trunk_status}" "error"
+                alarm_check_down "$trunk_name" "Trunk $trunk_name is ${trunk_status} at $IDENTIFIER" "trunk"
+            else
+                alarm_check_up "$trunk_name" "Trunk $trunk_name is ${trunk_status} again at $IDENTIFIER" "trunk"
+                print_colour "$trunk_name" "OK"
+            fi
+        done
+        IFS=$OLDIFS
+    fi
 }
 
 function asterisk_error_check() {
@@ -381,6 +411,7 @@ function check_data_file() {
 function main() {
     create_pid
     is_old=0
+    
     # Checks if systemctl is present, if not it uses service instead
     if [ -z "$(command -v systemctl)" ]; then
         is_old=1
@@ -390,7 +421,15 @@ function main() {
         if [ "$out" == "mysql: unrecognized service" ]; then
             SERVICES[4]="mysqld"
         fi
+    else
+        # Check web server service name (httpd vs apache2)
+        if systemctl list-unit-files | grep -q "apache2.service"; then
+            SERVICES[3]="apache2"
+        elif systemctl list-unit-files | grep -q "httpd.service"; then
+            SERVICES[3]="httpd"
+        fi
     fi
+    
     echo "Monofon-health.sh started health check at $(date)"
     printf '\n'
     echo_status "Checking the statuses of the Services"
