@@ -233,7 +233,7 @@ function check_monofon_services() {
 
 function check_concurrent_calls() {
     echo_status "Checking the number of concurrent calls"
-    active_calls=$(asterisk -rx "core show channels" | grep "active calls" | awk '{print $1}')
+    active_calls=$(asterisk -rx "core show channels" | grep "active call" | awk '{print $1}')
 
     if [[ $active_calls -gt $CONCURRENT_CALLS ]]; then
         alarm_check_down "active_calls" "Number of active calls at $IDENTIFIER is ${active_calls}" "service"
