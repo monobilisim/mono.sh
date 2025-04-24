@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 ###~ description: Checks the status of monofon and related services
 
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -250,7 +250,7 @@ function check_trunks() {
     # Check if PJSIP is being used by trying to run a PJSIP command
     if asterisk -rx "module show like pjsip" 2>/dev/null | grep -q "res_pjsip.so"; then
         # PJSIP mode - use pjsip show contacts for a cleaner output
-        trunk_list=$(asterisk -rx "pjsip show contacts" | grep -E '^[[:space:]]*Contact:' | grep -v "Objects found" | sed '1d' | sed 's/^[[:space:]]*Contact:[[:space:]]*//')
+        trunk_list=$(asterisk -rx "pjsip show contacts" | grep -E '^[[:space:]]*Contact:' | grep -v "Objects found" | sed '1d' | sed 's/^[[:space:]]*Contact:[[:space:]]*//' | grep '@' | grep 'voip')
 
         OLDIFS=$IFS
         IFS=$'\n'
