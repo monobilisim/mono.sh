@@ -250,7 +250,8 @@ function check_trunks() {
     # Check if PJSIP is being used by trying to run a PJSIP command
     if asterisk -rx "module show like pjsip" 2>/dev/null | grep -q "res_pjsip.so"; then
         # PJSIP mode - use pjsip show contacts for a cleaner output
-        trunk_list=$(asterisk -rx "pjsip show contacts" | grep -E '^[[:space:]]*Contact:' | grep -v "Objects found" | sed '1d' | sed 's/^[[:space:]]*Contact:[[:space:]]*//' | grep -v 'rinstance')
+        trunk_list=$(asterisk -rx "pjsip show contacts" | grep -E '^[[:space:]]*Contact:' | grep -v "Objects found" | sed '1d' | sed 's/^[[:space:]]*Contact:[[:space:]]*//' | grep -v 'rinstance' | grep -E '^[A-Za-z]')
+
 
         OLDIFS=$IFS
         IFS=$'\n'
