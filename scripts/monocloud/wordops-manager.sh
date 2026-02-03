@@ -2,7 +2,7 @@
 ###~ description: This script is used to manage WordOps
 export MC_REGION=ist1
 #~ variables
-script_version="3.1.2"
+script_version="3.1.3"
 if [[ "$CRON_MODE" == "1" ]]; then
     export MC_REGION=ist1
     export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -183,6 +183,16 @@ check_database() {
     else 
         echo "$color_green[  OK  ] Fact database is already initialized..."
     fi
+
+    #~ check/create wordops_deleted table
+    mysql wordops -u wordops -pwordops -e "CREATE TABLE IF NOT EXISTS wordops_deleted (id INT AUTO_INCREMENT PRIMARY KEY, web_url VARCHAR(100) NOT NULL, deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);" &>/dev/null && echo "$color_green[  OK  ] Deleted table checked/created successfully..." || { echo "$color_red[ FAIL ] Failed to check/create deleted table..."; return 1; }
+
+    #~ check/add enabled column
+    mysql wordops -u wordops -pwordops -e "SELECT enabled FROM wordops_facts LIMIT 1;" &>/dev/null
+    if [[ $? -ne 0 ]]; then
+        echo "$color_blue[ INFO ] Adding 'enabled' column to wordops_facts..."
+        mysql wordops -u wordops -pwordops -e "ALTER TABLE wordops_facts ADD COLUMN enabled BOOLEAN DEFAULT TRUE;" &>/dev/null && echo "$color_green[  OK  ] 'enabled' column added successfully..." || { echo "$color_red[ FAIL ] Failed to add 'enabled' column..."; return 1; }
+    fi
 }
 
 #~ database manager
@@ -193,7 +203,7 @@ database_manager() {
     case $1 in
     "insert")
         local site_name=$(echo $2 | cut -d '"' -f2)
-        mysql wordops -u wordops -pwordops -e "INSERT INTO wordops_facts (web_url, site_type, php_version, cf_proxy, nginx_helper, wp_redis, wp_admin_url, wp_admin_username, wp_admin_password, sftp_user, sftp_pass, project_name) VALUES ($2);" &>/dev/null && echo -e "$color_green[  OK  ] Inserted successfully for $site_name..." || { echo -e "$color_red[ FAIL ] Failed to insert for $site_name..."; return 1; }
+        mysql wordops -u wordops -pwordops -e "INSERT INTO wordops_facts (web_url, site_type, php_version, cf_proxy, nginx_helper, wp_redis, wp_admin_url, wp_admin_username, wp_admin_password, sftp_user, sftp_pass, project_name, enabled) VALUES ($2);" &>/dev/null && echo -e "$color_green[  OK  ] Inserted successfully for $site_name..." || { echo -e "$color_red[ FAIL ] Failed to insert for $site_name..."; return 1; }
         ;;
     "update")
         mysql wordops -u wordops -pwordops -e "UPDATE wordops_facts SET $2=$3 WHERE web_url=$4;" &>/dev/null && echo -e "$color_green[  OK  ] Updated successfully for $4..." || { echo -e "$color_red[ FAIL ] Failed to update for $4..."; return 1; }
@@ -264,7 +274,10 @@ get_facts() {
         local site_sftp_user="$(cat /opt/sftp/users.conf | grep "^$site" | cut -d ':' -f1)"
         local site_sftp_pass="$(cat /opt/sftp/users.conf | grep "^$site" | cut -d ':' -f2)"
 
-        json+="{\"web_url\": \"$site_name\", \"site_type\": \"$site_type\", \"php_version\": \"${php_version:-0}\", \"cf_proxy\": \"${site_cfproxy:-0}\", \"nginx_helper\": \"${site_nginxhelper:-0}\", \"wp_redis\": \"${site_redis:-0}\", \"sftp_user\": \"${site_sftp_user:--}\", \"sftp_pass\": \"${site_sftp_pass:--}\" },"
+        # Check if site is enabled (symlink exists in sites-enabled)
+        [[ -L "/etc/nginx/sites-enabled/$site" ]] && local site_enabled="true" || local site_enabled="false"
+
+        json+="{\"web_url\": \"$site_name\", \"site_type\": \"$site_type\", \"php_version\": \"${php_version:-0}\", \"cf_proxy\": \"${site_cfproxy:-0}\", \"nginx_helper\": \"${site_nginxhelper:-0}\", \"wp_redis\": \"${site_redis:-0}\", \"sftp_user\": \"${site_sftp_user:--}\", \"sftp_pass\": \"${site_sftp_pass:--}\", \"enabled\": $site_enabled },"
     done
     json=$(echo $json | sed 's/,$//')
     json+=']'
@@ -340,6 +353,7 @@ save_fact() {
         local wp_redis=$(echo $site_facts | jq -r ".[$i].wp_redis")
         local sftp_user=$(echo $site_facts | jq -r ".[$i].sftp_user")
         local sftp_pass=$(echo $site_facts | jq -r ".[$i].sftp_pass")
+        local enabled=$(echo $site_facts | jq -r ".[$i].enabled")
 
         if [[ "$CRON_MODE" != "1" ]]; then
             read -p "$(echo -e "$color_yellow[ ???? ] Do you want to update/add Project name for $web_url? (y/N): ")" question
@@ -365,13 +379,14 @@ save_fact() {
                 [[ -z "$wp_admin_pass" ]] && { wp_admin_pass="-"; }
             fi
             [[ -z "$project_name" ]] && { project_name="-"; }
-            database_manager "insert" "\"$web_url\", \"$site_type\", \"$php_version\", \"$cf_proxy\", \"$nginx_helper\", \"$wp_redis\", \"$wp_admin_url\", \"$wp_admin_user\", \"$wp_admin_pass\", \"$sftp_user\", \"$sftp_pass\", \"$project_name\""
+            database_manager "insert" "\"$web_url\", \"$site_type\", \"$php_version\", \"$cf_proxy\", \"$nginx_helper\", \"$wp_redis\", \"$wp_admin_url\", \"$wp_admin_user\", \"$wp_admin_pass\", \"$sftp_user\", \"$sftp_pass\", \"$project_name\", $enabled"
         else
             database_manager "update" "site_type" "\"$site_type\"" "\"$web_url\""
             [[ "$site_type" == "Static" ]] && { database_manager "update" "php_version" "\"-\"" "\"$web_url\""; } || { database_manager "update" "php_version" "\"$php_version\"" "\"$web_url\""; }
             database_manager "update" "cf_proxy" "\"$cf_proxy\"" "\"$web_url\""
             database_manager "update" "nginx_helper" "\"$nginx_helper\"" "\"$web_url\""
             database_manager "update" "wp_redis" "\"$wp_redis\"" "\"$web_url\""
+            database_manager "update" "enabled" "$enabled" "\"$web_url\""
             [[ -n "$project_name" ]] && database_manager "update" "project_name" "\"$project_name\"" "\"$web_url\""
             if [[ "$site_type" == "WordPress" ]]; then
                 [[ ! -z "$wp_admin_url" ]] && { database_manager "update" "wp_admin_url" "\"$wp_admin_url\"" "\"$web_url\""; }
@@ -386,6 +401,32 @@ save_fact() {
             database_manager "update" "sftp_pass" "\"$sftp_pass\"" "\"$web_url\""
         fi
     done
+}
+
+#~ sync sites
+sync_sites() {
+    check_database
+    echo "$color_blue[ INFO ] Syncing sites with database..."
+    
+    local db_sites=$(mysql wordops -u wordops -pwordops -N -B -e "SELECT web_url FROM wordops_facts;")
+    local current_sites=($(wo site list | ansi2txt | sort))
+    
+    # Check for deleted sites (in DB but not in system)
+    for db_site in $db_sites; do
+        if [[ ! " ${current_sites[@]} " =~ " ${db_site} " ]]; then
+             echo "$color_yellow[ WARN ] Site $db_site found in DB but not in system. Archiving..."
+             
+             # Move to deleted table
+             mysql wordops -u wordops -pwordops -e "INSERT INTO wordops_deleted (web_url) VALUES ('$db_site');"
+             if [[ $? -eq 0 ]]; then
+                mysql wordops -u wordops -pwordops -e "DELETE FROM wordops_facts WHERE web_url='$db_site';"
+                echo "$color_green[  OK  ] Site $db_site moved to wordops_deleted table."
+             else
+                echo "$color_red[ FAIL ] Failed to archive $db_site."
+             fi
+        fi
+    done
+    echo "$color_green[  OK  ] Sync completed."
 }
 
 #~ restore backup
@@ -486,6 +527,7 @@ usage() {
     echo "  -l, --list <local|remote>    List backups"
     echo "  -r, --restore <file>         Restore backup"
     echo "  -S, --save <site>            Save site facts"
+    echo "  -Y, --sync                   Sync sites (archive deleted sites)"
     echo "  -s, --status                 Check backup status"
     echo "  -V, --validate               Validate script and exit"
     echo "  -v, --version                Display version information and exit"
@@ -494,7 +536,7 @@ usage() {
 
 #~ main
 main() {
-	opt=($(getopt -l "backup:,config:,check-crontab,download,list:,restore:,save:,status,validate,version,help" -o "b:,c:,C,d,l:,r:,S:,s,V,v,h" -n "$0" -- "$@"))
+	opt=($(getopt -l "backup:,config:,check-crontab,download,list:,restore:,save:,sync,status,validate,version,help" -o "b:,c:,C,d,l:,r:,S:,Y,s,V,v,h" -n "$0" -- "$@"))
 	[[ "${#opt[@]}" == "1" ]] && { usage; exit 1; }
 	eval set -- "${opt[@]}"
 
@@ -528,6 +570,9 @@ main() {
             ;;
         -S | --save)
             save_fact "$2"
+            ;;
+        -Y | --sync)
+            sync_sites
             ;;
         -s | --status)
             backup_status
