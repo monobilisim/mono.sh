@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-###~ description: Rename a agent in Asterisk
+###~ description: Rename an agent in Asterisk
 if [[ -z "$1" ]]; then
     echo "User ID is not defined..."
     exit 1
@@ -10,11 +10,11 @@ fi
 if [[ -z "$2" ]]; then
     echo "Username is not defined..."
     exit 1
-else 
+else
      NAME="$2"
 fi
 
-OLD_NAME="$(mysql -e "SELECT label FROM asterisk.fop2buttons WHERE exten = $EXTEN;" | sed '1d')"
+OLD_NAME="$(mysql -e "SELECT label FROM asterisk.fop2buttons WHERE exten = '$EXTEN';" | sed '1d')"
 
 echo "EXTEN: $EXTEN"
 echo "NAME: $NAME"
@@ -24,10 +24,10 @@ echo "---------------------------------------"
 echo " Current State"
 echo "---------------------------------------"
 asterisk -rx "database get AMPUSER/$EXTEN cidname"
-mysql -e "SELECT data FROM asterisk.sip WHERE id = $EXTEN AND keyword = 'callerid';"
-mysql -e "SELECT name FROM asterisk.users WHERE extension = $EXTEN;"
-mysql -e "SELECT label, queuechannel FROM asterisk.fop2buttons WHERE exten = $EXTEN;"
-mysql -e "SELECT name, queue FROM qstats.monofon_agent WHERE extension = $EXTEN AND date = CURDATE();"
+mysql -e "SELECT data FROM asterisk.sip WHERE id = '$EXTEN' AND keyword = 'callerid';"
+mysql -e "SELECT name FROM asterisk.users WHERE extension = '$EXTEN';"
+mysql -e "SELECT label, queuechannel FROM asterisk.fop2buttons WHERE exten = '$EXTEN';"
+mysql -e "SELECT name, queue FROM qstats.monofon_agent WHERE extension = '$EXTEN' AND date = CURDATE();"
 asterisk -rx "queue show" | grep "Local/$EXTEN@"
 echo "---------------------------------------"
 echo "Press Enter to continue..."
@@ -36,16 +36,16 @@ read -r
 asterisk -rx "database get AMPUSER/$EXTEN cidname"
 asterisk -rx "database put AMPUSER/$EXTEN cidname \"$NAME\""
 
-mysql -e "SELECT data FROM asterisk.sip WHERE id = $EXTEN AND keyword = 'callerid';"
-mysql -e "UPDATE asterisk.sip SET data = '$NAME <$EXTEN>' WHERE id = $EXTEN AND keyword = 'callerid';"
+mysql -e "SELECT data FROM asterisk.sip WHERE id = '$EXTEN' AND keyword = 'callerid';"
+mysql -e "UPDATE asterisk.sip SET data = '$NAME <$EXTEN>' WHERE id = '$EXTEN' AND keyword = 'callerid';"
 
-mysql -e "SELECT name FROM asterisk.users WHERE extension = $EXTEN;"
-mysql -e "UPDATE asterisk.users SET name = '$NAME' WHERE extension = $EXTEN;"
+mysql -e "SELECT name FROM asterisk.users WHERE extension = '$EXTEN';"
+mysql -e "UPDATE asterisk.users SET name = '$NAME' WHERE extension = '$EXTEN';"
 
-mysql -e "SELECT label, queuechannel FROM asterisk.fop2buttons WHERE exten = $EXTEN;"
-mysql -e "UPDATE asterisk.fop2buttons SET queuechannel = REPLACE(queuechannel, '$OLD_NAME', '$NAME') WHERE exten = $EXTEN;"
-mysql -e "UPDATE asterisk.fop2buttons SET label = '$NAME' WHERE exten = $EXTEN;"
-mysql -e "UPDATE qstats.monofon_agent SET name = '$NAME' WHERE extension = $EXTEN AND date = CURDATE();"
+mysql -e "SELECT label, queuechannel FROM asterisk.fop2buttons WHERE exten = '$EXTEN';"
+mysql -e "UPDATE asterisk.fop2buttons SET queuechannel = REPLACE(queuechannel, '$OLD_NAME', '$NAME') WHERE exten = '$EXTEN';"
+mysql -e "UPDATE asterisk.fop2buttons SET label = '$NAME' WHERE exten = '$EXTEN';"
+mysql -e "UPDATE qstats.monofon_agent SET name = '$NAME' WHERE extension = '$EXTEN' AND date = CURDATE();"
 
 /usr/local/fop2/autoconfig-buttons.sh
 /usr/local/fop2/autoconfig-users.sh
@@ -57,7 +57,7 @@ else
         amportal a r
 fi
 
-mapfile -t queue_list < <(asterisk -rx "queue show" | grep strategy | awk '{print $1}') 
+mapfile -t queue_list < <(asterisk -rx "queue show" | grep strategy | awk '{print $1}')
 for queue in "${queue_list[@]}"; do
         member=$(asterisk -rx "queue show $queue" | grep "Local/$EXTEN@" | perl -ne '/\((\S+)/ && print "$1\n"')
         state_interface=$(asterisk -rx "queue show $queue" | grep "Local/$EXTEN@" | perl -ne '/from (\S+)\)/ && print "$1\n"')
@@ -74,8 +74,8 @@ echo "---------------------------------------"
 echo " Final State"
 echo "---------------------------------------"
 asterisk -rx "database get AMPUSER/$EXTEN cidname"
-mysql -e "SELECT data FROM asterisk.sip WHERE id = $EXTEN AND keyword = 'callerid';"
-mysql -e "SELECT name FROM asterisk.users WHERE extension = $EXTEN;"
-mysql -e "SELECT label, queuechannel FROM asterisk.fop2buttons WHERE exten = $EXTEN;"
-mysql -e "SELECT name, queue FROM qstats.monofon_agent WHERE extension = $EXTEN AND date = CURDATE();"
+mysql -e "SELECT data FROM asterisk.sip WHERE id = '$EXTEN' AND keyword = 'callerid';"
+mysql -e "SELECT name FROM asterisk.users WHERE extension = '$EXTEN';"
+mysql -e "SELECT label, queuechannel FROM asterisk.fop2buttons WHERE exten = '$EXTEN';"
+mysql -e "SELECT name, queue FROM qstats.monofon_agent WHERE extension = '$EXTEN' AND date = CURDATE();"
 echo "---------------------------------------"
