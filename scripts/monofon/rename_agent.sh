@@ -43,7 +43,7 @@ mysql -e "SELECT name FROM asterisk.users WHERE extension = '$EXTEN';"
 mysql -e "UPDATE asterisk.users SET name = '$NAME' WHERE extension = '$EXTEN';"
 
 mysql -e "SELECT label, queuechannel FROM asterisk.fop2buttons WHERE exten = '$EXTEN';"
-mysql -e "UPDATE asterisk.fop2buttons SET queuechannel = REPLACE(queuechannel, '$OLD_NAME', '$NAME') WHERE exten = '$EXTEN';"
+mysql -e "UPDATE asterisk.fop2buttons SET queuechannel = REPLACE(queuechannel, 'MemberName=$OLD_NAME', 'MemberName=$NAME') WHERE exten = $EXTEN;"
 mysql -e "UPDATE asterisk.fop2buttons SET label = '$NAME' WHERE exten = '$EXTEN';"
 mysql -e "UPDATE qstats.monofon_agent SET name = '$NAME' WHERE extension = '$EXTEN' AND date = CURDATE();"
 
