@@ -7,9 +7,9 @@ Kural (image/artifact adı bazında):
   - 3+ tag varsa, en yeni 2'si korunur, geri kalanlardan 90 günden eskiler silinir
 
 Örnekler:
-  pioneer/jsure-partner-manager-test:1521  → korunur (en yeni 1)
-  pioneer/jsure-partner-manager-test:1520  → korunur (en yeni 2)
-  pioneer/jsure-partner-manager-test:1519  → 90 günden eskiyse SİLİNİR
+  repo/image-name:1521  → korunur (en yeni 1)
+  repo/image-name:1520  → korunur (en yeni 2)
+  repo/image-name:1519  → 90 günden eskiyse SİLİNİR
 
 Kullanım:
   python3 nexus_cleanup.py [--dry-run]
