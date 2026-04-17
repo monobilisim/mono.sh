@@ -2,44 +2,47 @@
 """
 Nexus OSS Cleanup Script
 ========================
-Kural:
-  - Her repoda en az 2 component HER ZAMAN korunur (tarihe bakmaksızın)
-  - 3+ component varsa, en yeni 2'si korunur, geri kalanlardan 90 günden
-    eskiler silinir.
+Kural (image/artifact adı bazında):
+  - Her bir image/artifact adı için en yeni 2 tag/versiyon HER ZAMAN korunur
+  - 3+ tag varsa, en yeni 2'si korunur, geri kalanlardan 90 günden eskiler silinir
+
+Örnekler:
+  pioneer/jsure-partner-manager-test:1521  → korunur (en yeni 1)
+  pioneer/jsure-partner-manager-test:1520  → korunur (en yeni 2)
+  pioneer/jsure-partner-manager-test:1519  → 90 günden eskiyse SİLİNİR
 
 Kullanım:
   python3 nexus_cleanup.py [--dry-run]
-
-  --dry-run : Silme işlemi yapmaz, sadece ne yapılacağını loglar.
 """
 
 import requests
 import argparse
 from datetime import datetime, timezone, timedelta
+from collections import defaultdict
 
 # ─── YAPILANDIRMA ─────────────────────────────────────────────────────────────
-NEXUS_URL      = "https://nexus.domain.com" # <-- Gerçek domaininizle değiştirin
-USERNAME       = "admin"
+NEXUS_URL      = "https://nexus.domain.com" # <-- Gerçek URL'inizle değiştirin
+USERNAME       = "admin"             
 PASSWORD       = "admin123"                 # <-- Gerçek şifrenizle değiştirin
-MIN_KEEP       = 2                          # Her repoda minimum korunacak paket sayısı
-RETENTION_DAYS = 90                         # Gün eşiği
+MIN_KEEP       = 2                          # Her image adı için minimum korunacak tag sayısı
+RETENTION_DAYS = 90
 # ──────────────────────────────────────────────────────────────────────────────
 
 session = requests.Session()
 session.auth = (USERNAME, PASSWORD)
-session.verify = False               # Self-signed cert varsa False bırakın
+session.verify = False
 session.headers.update({"Accept": "application/json"})
 
 cutoff = datetime.now(timezone.utc) - timedelta(days=RETENTION_DAYS)
 
+
 def get_all_repos():
-    """Tüm hosted repoları döner."""
     r = session.get(f"{NEXUS_URL}/service/rest/v1/repositories")
     r.raise_for_status()
     return [repo for repo in r.json() if repo.get("type") == "hosted"]
 
+
 def get_components(repo_name):
-    """Bir repodaki tüm componentleri sayfalayarak çeker."""
     components = []
     continuation_token = None
     while True:
@@ -55,11 +58,10 @@ def get_components(repo_name):
             break
     return components
 
+
 def parse_date(date_str):
-    """ISO 8601 tarih stringini datetime objesine çevirir."""
     if not date_str:
         return datetime.min.replace(tzinfo=timezone.utc)
-    # Farklı format varyantlarını destekle
     for fmt in ("%Y-%m-%dT%H:%M:%S.%f%z", "%Y-%m-%dT%H:%M:%S%z"):
         try:
             return datetime.strptime(date_str, fmt)
@@ -67,25 +69,24 @@ def parse_date(date_str):
             continue
     return datetime.min.replace(tzinfo=timezone.utc)
 
-def delete_component(component_id, dry_run):
-    """Bir componenti siler."""
-    if dry_run:
-        return True
-    r = session.delete(f"{NEXUS_URL}/service/rest/v1/components/{component_id}")
-    return r.status_code in (200, 204)
 
 def get_component_date(component):
-    """Component için en güncel tarihi döner (assets içindeki blobCreated kullanılır)."""
     dates = []
     for asset in component.get("assets", []):
         blob_created = asset.get("blobCreated")
         if blob_created:
             dates.append(parse_date(blob_created))
     if not dates:
-        # Fallback: component düzeyindeki lastModified
-        last_modified = component.get("lastModified")
-        return parse_date(last_modified)
+        return parse_date(component.get("lastModified"))
     return max(dates)
+
+
+def delete_component(component_id, dry_run):
+    if dry_run:
+        return True
+    r = session.delete(f"{NEXUS_URL}/service/rest/v1/components/{component_id}")
+    return r.status_code in (200, 204)
+
 
 def process_repo(repo, dry_run):
     repo_name = repo["name"]
@@ -98,48 +99,57 @@ def process_repo(repo, dry_run):
         print(f"  [HATA] Componentler alınamadı: {e}")
         return
 
-    total = len(components)
-    print(f"  Toplam component: {total}")
+    # Her image adı için tag'leri grupla
+    # Docker: name="pioneer/jsure-partner-manager-test", version="1521"
+    # Maven:  name="medisa-collection-ws",               version="1.2.0.0-prod"
+    groups = defaultdict(list)
+    for c in components:
+        groups[c.get("name", "unknown")].append(c)
 
-    if total <= MIN_KEEP:
-        print(f"  → {total} component var, minimum {MIN_KEEP} eşiğinde. HİÇBİR ŞEY SİLİNMEDİ.")
-        return
+    total_deleted = 0
+    total_skipped = 0
+    total_protected = 0
 
-    # En yeni tarihten eskiye sırala
-    components.sort(key=lambda c: get_component_date(c), reverse=True)
+    for image_name, tags in sorted(groups.items()):
+        # En yeniden eskiye sırala
+        tags.sort(key=lambda c: get_component_date(c), reverse=True)
 
-    kept    = components[:MIN_KEEP]
-    candidates = components[MIN_KEEP:]
+        kept = tags[:MIN_KEEP]
+        candidates = tags[MIN_KEEP:]
 
-    print(f"  Korunan (ilk {MIN_KEEP}):")
-    for c in kept:
-        d = get_component_date(c)
-        print(f"    ✔ {c.get('name')}:{c.get('version')}  [{d.strftime('%Y-%m-%d')}]")
+        total_protected += len(kept)
 
-    deleted_count = 0
-    skipped_count = 0
+        if not candidates:
+            continue  # 1-2 tag var, dokunma
 
-    for c in candidates:
-        comp_date = get_component_date(c)
-        name_ver  = f"{c.get('name')}:{c.get('version')}"
-        date_str  = comp_date.strftime('%Y-%m-%d')
+        deleted_this = 0
+        skipped_this = 0
 
-        if comp_date < cutoff:
-            tag = "[DRY-RUN] SİLİNECEK" if dry_run else "SİLİNDİ"
-            ok  = delete_component(c["id"], dry_run)
-            if ok:
-                print(f"    ✗ {tag}: {name_ver}  [{date_str}]  (90 günden eski)")
-                deleted_count += 1
+        for c in candidates:
+            comp_date = get_component_date(c)
+            if comp_date < cutoff:
+                label = "[DRY-RUN] SİLİNECEK" if dry_run else "SİLİNDİ"
+                ok = delete_component(c["id"], dry_run)
+                if ok:
+                    print(f"  ✗ {label}: {image_name}:{c.get('version')}  [{comp_date.strftime('%Y-%m-%d')}]")
+                    deleted_this += 1
+                else:
+                    print(f"  ! BAŞARISIZ: {image_name}:{c.get('version')}")
             else:
-                print(f"    ! SİLME BAŞARISIZ: {name_ver}")
-        else:
-            print(f"    ~ Korundu (90 gün içinde): {name_ver}  [{date_str}]")
-            skipped_count += 1
+                skipped_this += 1
 
-    print(f"  Özet → Silinen: {deleted_count} | 90 gün içinde korunan: {skipped_count} | Min. korunan: {MIN_KEEP}")
+        if deleted_this > 0:
+            kept_str = ", ".join(c.get("version", "?") for c in kept)
+            print(f"    └─ Korunan → {image_name}: [{kept_str}]")
+
+        total_deleted += deleted_this
+        total_skipped += skipped_this
+
+    print(f"\n  Özet → Silinen: {total_deleted} | 90 gün içinde korunan: {total_skipped} | Min. korunan (image başına 2): {total_protected}")
+
 
 def main():
-    parser = argparse.ArgumentParser(description="Nexus OSS Cleanup Script")
+    parser = argparse.ArgumentParser(description="Nexus OSS Cleanup - Per Image Name")
     parser.add_argument("--dry-run", action="store_true",
                         help="Silme yapmadan sadece ne yapılacağını göster")
     args = parser.parse_args()
@@ -150,7 +160,7 @@ def main():
         print("=" * 60)
 
     print(f"Bağlanılıyor: {NEXUS_URL}")
-    print(f"Eşik: {RETENTION_DAYS} gün | Min. koruma: {MIN_KEEP} component")
+    print(f"Eşik: {RETENTION_DAYS} gün | Her image için min. koruma: {MIN_KEEP} tag")
     print(f"Silme tarihi eşiği: {cutoff.strftime('%Y-%m-%d')}")
 
     try:
@@ -166,6 +176,7 @@ def main():
 
     print(f"\n{'='*60}")
     print("Cleanup tamamlandı.")
+
 
 if __name__ == "__main__":
     import urllib3
