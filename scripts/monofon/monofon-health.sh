@@ -359,12 +359,12 @@ check_voice_records() {
             print_colour "Number of Recordings" "$file_count"
         fi
     else
-        alarm_check_down "recording_folder" "Folder: $recordings_path doesn't exist. Creating..."
+        # alarm_check_down "recording_folder" "Folder: $recordings_path doesn't exist. Creating..."
         echo "Folder: $recordings_path doesn't exist. Creating..."
         mkdir -p "$recordings_path"
         chown asterisk:asterisk "$recordings_path"
         if [ -d "$recordings_path" ]; then
-            alarm_check_up "recording_folder" "Successfully created folder: $recordings_path"
+            # alarm_check_up "recording_folder" "Successfully created folder: $recordings_path"
             echo "Successfully created folder: $recordings_path"
         else
             alarm "[Monofon - $IDENTIFIER] [:red_circle:] Couldn't create folder: $recordings_path"
