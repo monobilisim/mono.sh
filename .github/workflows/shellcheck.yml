@@ -1,20 +1,21 @@
-# on:
-#   push:
-#     branches:
-#       - main
-#   workflow_dispatch:
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
 
-# name: "Trigger: Push action"
-# permissions: {}
+name: "Trigger: Push action"
+permissions: {}
 
-# jobs:
-#   shellcheck:
-#     name: Shellcheck
-#     runs-on: ubuntu-latest
-#     steps:
-#       - uses: actions/checkout@v4
-#       - name: Run ShellCheck
-#         uses: ludeeus/action-shellcheck@master
-#         with:
-#           ignore_paths: >-
-#             ./scripts/monocloud/os-health.sh
+jobs:
+  shellcheck:
+    if: false
+    name: Shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          ignore_paths: >-
+            ./scripts/monocloud/os-health.sh
