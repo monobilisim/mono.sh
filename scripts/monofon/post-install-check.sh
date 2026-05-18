@@ -2,8 +2,8 @@
 
 FREEPBXPACKAGENAME="freepbx17"
 
-if ! fwconsole ma upgrade framework; then
-    echo "Hata: Framework modülü güncellenemedi."
+if ! fwconsole ma upgradeall; then
+    echo "Hata: Framework ve modüller güncellenemedi."
     echo "Lütfen önce internet bağlantısını kontrol edin."
     exit 1
 fi
@@ -36,39 +36,41 @@ if ! apt autoremove -y; then
     exit 1
 fi
 
+if ! fwconsole ma upgradeall; then
+    echo "Hata: Framework ve modüller güncellenemedi."
+    echo "Lütfen önce internet bağlantısını kontrol edin."
+    exit 1
+fi
+
+FAILED_MODULES=()
+PREVIOUS_COUNT=-1
 while true; do
     mapfile -t COMMERCIAL_MODULES < <(
         fwconsole ma list 2>/dev/null \
           | awk -F'|' 'NR>3 && /Commercial/ { gsub(/[[:space:]]/, "", $2); print $2 }' \
           | grep -v '^$'
         )
-
     if [ ${#COMMERCIAL_MODULES[@]} -eq 0 ]; then
         echo "Tüm Commercial modüller başarıyla kaldırıldı."
         break
     fi
-
+    # Önceki iterasyondan beri ilerleme yoksa, kalan modüller kaldırılamıyor demektir.
+    if [ "${#COMMERCIAL_MODULES[@]}" -eq "$PREVIOUS_COUNT" ]; then
+        FAILED_MODULES=("${COMMERCIAL_MODULES[@]}")
+        echo "Bazı Commercial modüller kaldırılamadı, döngüden çıkılıyor."
+        break
+    fi
+    PREVIOUS_COUNT=${#COMMERCIAL_MODULES[@]}
     echo "Kaldırılacak ${#COMMERCIAL_MODULES[@]} Commercial modül kaldı..."
-
-    REMOVED_ANY=false
     for module in "${COMMERCIAL_MODULES[@]}"; do
         if fwconsole ma uninstall "$module"; then
             fwconsole ma remove "$module"
-            REMOVED_ANY=true
         fi
     done
-
-    # Bağımlılık sorunu mevcut ise zorla kaldır
-    if [ "$REMOVED_ANY" = false ]; then
-        echo "Uyarı: Kalan modüller bağımlılıklar yüzünden normal yollarla kaldırılamıyor."
-        echo "Kalan modüller için --force kullanılıyor..."
-        for module in "${COMMERCIAL_MODULES[@]}"; do
-           fwconsole ma uninstall "$module" --force
-            fwconsole ma remove "$module"
-        done
-        break
-    fi
 done
+
+echo "Commercial modüller kaldırıldıktan sonra veritabanı eşitleniyor..."
+fwconsole reload
 
 HOSTNAME=$(hostname)
 if ! fwconsole setting FREEPBX_SYSTEM_IDENT "$HOSTNAME"; then
@@ -109,4 +111,11 @@ fi
 
 if echo "$QUEUELOG_BLOCK" | grep -q "^[[:space:]]*monthly[[:space:]]*$"; then
     echo -e "\e[32mOK: queue_log aylık (monthly) modda\e[0m"
+fi
+
+if [ ${#FAILED_MODULES[@]} -gt 0 ]; then
+    echo -e "\e[31mKaldırılamayan Commercial modüller (${#FAILED_MODULES[@]}):\e[0m"
+    for module in "${FAILED_MODULES[@]}"; do
+        echo -e "\e[31m  - $module\e[0m"
+    done
 fi
