@@ -1,10 +1,12 @@
 #!/bin/bash
 ###~ description: This script is used to manage WordOps
-export MC_REGION=ist1
+###~ repository: git@github.com:monobilisim/mono.sh.git
+export MC_REGION=ist2
+export PYTHONWARNINGS="ignore::UserWarning"
 #~ variables
-script_version="3.1.3"
+script_version="3.1.4"
 if [[ "$CRON_MODE" == "1" ]]; then
-    export MC_REGION=ist1
+    export MC_REGION=ist2
     export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
     color_red=""
@@ -14,10 +16,10 @@ if [[ "$CRON_MODE" == "1" ]]; then
     color_reset=""
 
     #~ log file prefix
-    echo "=== ( $(date) - $HOSTNAME ) =========================================" >/tmp/wordops-manager.log
+    echo "=== ( $(date) - $HOSTNAME ) =========================================" >/var/backup/wordops-manager.log
 
     #~ redirect all outputs to file
-    exec &>>/tmp/wordops-manager.log
+    exec &>>/var/backup/wordops-manager.log
 else 
     color_red=$(tput setaf 1)
     color_green=$(tput setaf 2)
@@ -26,14 +28,15 @@ else
     color_reset=$(tput sgr0)
 fi
 
-
 #~ functions
+mkdir -p /var/backup
+
 #~ backup site
 backup_site() {
     [[ "$1" == "all" ]] && { local site_list=($(wo site list | ansi2txt | sort)); echo "$color_yellow[ INFO ] Backing up all sites..."; } || { local site_list=("$1"); }
     for site in "${site_list[@]}"; do
         [[ -n "${EXCLUDE_SITES}" && "${EXCLUDE_SITES}" =~ "${a}" ]] && { echo "$color_yellow[ SKIP ] Skipping \"$site\"..."; continue; }
-        local tmpdir=$(mktemp -d)
+        local tmpdir=$(mktemp -d -p /var/backup)
         mkdir "$tmpdir/$site" && cd "$tmpdir/$site" || { echo "$color_red[ FAIL ] Failed to create temporary directory for \"$site\""; return 1; }
 
         local site_type=$(wo site info $site | grep 'Nginx configuration' | awk '{print $3}')
@@ -64,7 +67,7 @@ backup_site() {
             echo "wo_site_config=\$wo_site_name/wp-config.php" >>siteinfo.txt
             echo "wo_site_db_file=\$wo_site_name/\$wo_site_name.sql" >>siteinfo.txt
             echo "wo_site_project_name=$project_name" >> siteinfo.txt
-	    cd ..
+            cd ..
         elif [[ "$site_type" == "mysql" ]]; then
             local db_name=$(wo site info $site | grep 'DB_NAME' | awk '{print $2}')
             local db_user=$(wo site info $site | grep 'DB_USER' | awk '{print $2}')
@@ -93,7 +96,7 @@ backup_site() {
             cd ..
         else 
             echo "$color_red[ FAIL ] Unknown or unsupported site type \"$site_type\" for \"$site\"..."
-            cd /tmp
+            cd /var/backup
             rm -rf $tmpdir
             return 1
         fi
@@ -115,7 +118,7 @@ backup_site() {
         fi
 
         echo -e "$color_green[  OK  ] Backup process completed successfully for \"$site\", cleaning up...\n$color_reset"
-        cd /tmp
+        cd /var/backup
         rm -rf $tmpdir
     done
     
@@ -260,15 +263,9 @@ get_facts() {
         if [[ "$site_type" == "WordPress" ]]; then
             [[ "$(wp --allow-root --path=/var/www/$site/htdocs plugin list | grep -i nginx-helper | awk '{print $2}')" == "active" ]] && local site_nginxhelper="1" || local site_nginxhelper="0"
             [[ "$(wp --allow-root --path=/var/www/$site/htdocs plugin list | grep -i redis-cache | awk '{print $2}')" == "active" ]] && local site_redis="1" || local site_redis="0"
-            # [[ "$(wp --allow-root plugin list | grep -i w3-total-cache | awk '{print $2}')" == "active" ]] && local site_w3tc="1" || local site_w3tc="0"
-            # [[ "$(wp --allow-root plugin list | grep -i wp-super-cache | awk '{print $2}')" == "active" ]] && local site_wpsc="1" || local site_wpsc="0"
-            # [[ "$(wp --allow-root plugin list | grep -i wp-rocket | awk '{print $2}')" == "active" ]] && local site_wprocket="1" || local site_wprocket="0"
         else 
             local site_nginxhelper="0"
             local site_redis="0"
-            # local site_w3tc="-"
-            # local site_wpsc="-"
-            # local site_wprocket="-"
         fi
 
         local site_sftp_user="$(cat /opt/sftp/users.conf | grep "^$site" | cut -d ':' -f1)"
@@ -324,9 +321,9 @@ list_backups() {
 
 report_status() {
     [[ "$CRON_MODE" != "1" ]] && return 0
-    if [[ "$(cat /tmp/wordops-manager.log | sed '1d' | grep '\[ FAIL \]' | wc -l)" != "0" ]]; then
+    if [[ "$(cat /var/backup/wordops-manager.log | sed '1d' | grep '\[ FAIL \]' | wc -l)" != "0" ]]; then
         local alarm_text='```\n'
-        alarm_text+=$(cat /tmp/wordops-manager.log | grep -v '\[  OK  \]' | awk '{printf "%s\\n", $0}' | sed 's/"/\\"/g')
+        alarm_text+=$(cat /var/backup/wordops-manager.log | grep -v '\[  OK  \]' | awk '{printf "%s\\n", $0}' | sed 's/"/\\"/g')
         alarm_text+='```'
         local payload='{'"\"text\""': '"\"$alarm_text\""'}'
 
@@ -431,7 +428,7 @@ sync_sites() {
 
 #~ restore backup
 restore_backup() {
-    local tmpdir=$(mktemp -d)
+    local tmpdir=$(mktemp -d -p /var/backup)
     echo -e "$color_blue[ INFO ] Restoring backup..."
 
     [[ "$@" =~ "tar.gz" ]] && { local backup_file="$@"; } || { download_backup; local backup_file="$backup_file_name"; }
@@ -513,7 +510,7 @@ restore_backup() {
     wo clean --all &>/dev/null && echo -e "$color_green[  OK  ] WordOps cache cleaned successfully..." || { echo -e "$color_red[ FAIL ] Failed to clean WordOps cache..."; return 1; }
     echo -e "$color_green[  OK  ] Restarted WordOps successfully...\n$color_reset"
 
-    cd /tmp 
+    cd /var/backup
     rm -rf $tmpdir
 }
 
