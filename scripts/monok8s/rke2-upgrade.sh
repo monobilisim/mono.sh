@@ -387,6 +387,70 @@ wait_for_system_pods() {
     fi
 }
 
+# ======================== CONFIG / KUBECTL SYNC ========================
+# Keeps /etc/rancher/rke2/config.yaml's kubernetes-version line in sync with
+# the actually-installed RKE2 binary, and makes sure a system-wide kubectl
+# symlink exists and points at the (freshly-upgraded) RKE2 kubectl binary.
+
+sync_config_version() {
+    local ip="$1" version="$2"
+
+    local cmd
+    cmd=$(cat <<EOSH
+set -e
+CFG=/etc/rancher/rke2/config.yaml
+if [[ -f "\$CFG" ]]; then
+    cp "\$CFG" "\${CFG}.bak-\$(date +%Y%m%d-%H%M%S)"
+    # Drop any existing kubernetes-version line(s) (handles duplicates too)
+    sed -i '/^kubernetes-version:/d' "\$CFG"
+    echo "kubernetes-version: ${version}" >> "\$CFG"
+else
+    mkdir -p /etc/rancher/rke2
+    echo "kubernetes-version: ${version}" > "\$CFG"
+fi
+grep '^kubernetes-version:' "\$CFG"
+EOSH
+)
+
+    if [[ "$ip" == "$LOCAL_IP" ]]; then
+        info "Syncing config.yaml kubernetes-version locally → ${version}"
+        bash -c "$cmd" 2>&1 | tee -a "$LOG_FILE"
+    else
+        info "Syncing config.yaml kubernetes-version on remote node → ${version}"
+        remote_exec "$ip" "$cmd"
+    fi
+}
+
+sync_kubectl_symlink() {
+    local ip="$1"
+
+    local cmd
+    cmd=$(cat <<'EOSH'
+set -e
+RKE2_KUBECTL=/var/lib/rancher/rke2/bin/kubectl
+TARGET=/usr/local/bin/kubectl
+if [[ -x "$RKE2_KUBECTL" ]]; then
+    if [[ -L "$TARGET" ]]; then
+        ln -sfn "$RKE2_KUBECTL" "$TARGET"
+    elif [[ ! -e "$TARGET" ]]; then
+        ln -s "$RKE2_KUBECTL" "$TARGET"
+    fi
+    "$TARGET" version --client=true 2>/dev/null | head -1 || true
+else
+    echo "rke2 kubectl binary not found at $RKE2_KUBECTL, skipping symlink update"
+fi
+EOSH
+)
+
+    if [[ "$ip" == "$LOCAL_IP" ]]; then
+        info "Ensuring /usr/local/bin/kubectl symlink locally..."
+        bash -c "$cmd" 2>&1 | tee -a "$LOG_FILE"
+    else
+        info "Ensuring /usr/local/bin/kubectl symlink on remote node..."
+        remote_exec "$ip" "$cmd"
+    fi
+}
+
 # ======================== ETCD SNAPSHOT ========================
 
 take_etcd_snapshot() {
@@ -535,6 +599,11 @@ upgrade_first_server() {
     # Wait for node Ready
     sleep 15
     wait_for_node_ready "$LOCAL_HOSTNAME"
+
+    # Keep config.yaml and the kubectl symlink in sync with the new version
+    sync_config_version "$LOCAL_IP" "$version"
+    sync_kubectl_symlink "$LOCAL_IP"
+
     log "First server done: ${LOCAL_HOSTNAME} → ${version}"
 }
 
@@ -557,6 +626,11 @@ upgrade_other_server() {
     $KUBECTL uncordon "$name" 2>&1 | tee -a "$LOG_FILE"
 
     wait_for_node_ready "$name"
+
+    # Keep config.yaml and the kubectl symlink in sync with the new version
+    sync_config_version "$ip" "$version"
+    sync_kubectl_symlink "$ip"
+
     log "Server done: ${name} → ${version}"
 }
 
@@ -579,6 +653,10 @@ upgrade_agent() {
     $KUBECTL uncordon "$name" 2>&1 | tee -a "$LOG_FILE"
 
     wait_for_node_ready "$name"
+
+    # Agents also ship a kubernetes-version line in config.yaml; keep it honest
+    sync_config_version "$ip" "$version"
+
     log "Agent done: ${name} → ${version}"
 }
 
