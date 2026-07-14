@@ -66,9 +66,10 @@ while true; do
     echo "-----------------------------------"
     echo "1) Tüm Suppression Kayıtlarını Listele"
     echo "2) E-posta ile Kayıt Ara ve Sil"
-    echo "3) Sunucu Değiştir"
-    echo "4) Çıkış"
-    read -p "İşlem Seçiniz [1-4]: " action
+    echo "3) Tüm Listeyi Temizle"
+    echo "4) Sunucu Değiştir"
+    echo "5) Çıkış"
+    read -p "İşlem Seçiniz [1-5]: " action
 
     case $action in
         1)
@@ -105,9 +106,29 @@ while true; do
             fi
             ;;
         3)
-            exec "$0"
+            COUNT=$($DB_BIN -D "$SELECTED_DB" -e "SELECT COUNT(*) FROM suppressions;" --batch --skip-column-names)
+            if [[ "$COUNT" -eq 0 ]]; then
+                echo "Bilgi: Silinecek kayıt yok."
+                continue
+            fi
+
+            echo "UYARI: '$SELECTED_DB' üzerindeki $COUNT kayıt SİLİNECEK."
+            read -p "Onaylamak için SİL yazın: " CONFIRM
+            if [[ "$CONFIRM" == "SİL" ]]; then
+                $DB_BIN -D "$SELECTED_DB" -e "TRUNCATE TABLE suppressions;"
+                if [ $? -eq 0 ]; then
+                    echo "İşlem başarılı: $COUNT kayıt silindi."
+                else
+                    echo "Hata: Silme işlemi başarısız."
+                fi
+            else
+                echo "İşlem iptal edildi."
+            fi
             ;;
         4)
+            exec "$0"
+            ;;
+        5)
             echo "Çıkılıyor..."
             exit 0
             ;;
