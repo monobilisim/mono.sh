@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 FREEPBXPACKAGENAME="freepbx17"
-if ! fwconsole ma upgradeall; then
-    echo "Hata: Framework ve modüller güncellenemedi."
-    echo "Lütfen önce internet bağlantısını kontrol edin."
-    exit 1
+
+# Sangoma repo GPG anahtarı süre dolumu (EXPKEYSIG) hatasını önlemek için apt update'ten önce güncelliyoruz.
+if ! fwconsole util updategpgkey; then
+    echo "Uyarı: GPG anahtarı güncellenemedi, apt update yine de denenecek."
 fi
+
 # Güncelleyebilmek için FreePBX paketininin dokunulmazlığını kaldırıyoruz.
 # Burada hata olması bir sorun yaratmıyor.
 apt-mark unhold "$FREEPBXPACKAGENAME";
@@ -28,11 +29,8 @@ if ! apt autoremove -y; then
     echo "Hata: Gereksiz paketler kaldırılamadı."
     exit 1
 fi
-if ! fwconsole ma upgradeall; then
-    echo "Hata: Framework ve modüller güncellenemedi."
-    echo "Lütfen önce internet bağlantısını kontrol edin."
-    exit 1
-fi
+
+# Commercial modülleri, framework/modül güncellemesinden önce kaldırıyoruz.
 FAILED_MODULES=()
 PREVIOUS_COUNT=-1
 while true; do
@@ -59,6 +57,13 @@ while true; do
         fi
     done
 done
+
+if ! fwconsole ma upgradeall; then
+    echo "Hata: Framework ve modüller güncellenemedi."
+    echo "Lütfen önce internet bağlantısını kontrol edin."
+    exit 1
+fi
+
 echo "Commercial modüller kaldırıldıktan sonra veritabanı eşitleniyor..."
 fwconsole reload
 HOSTNAME=$(hostname)
