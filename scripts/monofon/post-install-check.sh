@@ -58,6 +58,17 @@ while true; do
     done
 done
 
+# Gereksiz görülen ek modüller de Commercial modüllerle birlikte kaldırılıyor.
+EXTRA_MODULES=(amd bulkhandler disa firewall hotelwakeup tts ttsengines ucp webrtc)
+echo "Gereksiz görülen ${#EXTRA_MODULES[@]} ek modül kaldırılıyor..."
+for module in "${EXTRA_MODULES[@]}"; do
+    if fwconsole ma uninstall "$module" 2>/dev/null; then
+        fwconsole ma remove "$module"
+    else
+        echo "Uyarı: $module zaten kurulu değil veya kaldırılamadı, atlanıyor."
+    fi
+done
+
 if ! fwconsole ma upgradeall; then
     echo "Hata: Framework ve modüller güncellenemedi."
     echo "Lütfen önce internet bağlantısını kontrol edin."
