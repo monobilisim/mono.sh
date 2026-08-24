@@ -107,6 +107,7 @@ QUEUELOG_BLOCK=$(sed -n '/^\/var\/log\/asterisk\/queue_log[[:space:]]*{/,/^}/p' 
 
 if echo "$QUEUELOG_BLOCK" | grep -q "^[[:space:]]*daily[[:space:]]*$"; then
     echo -e "\e[31mALERT: queue_log günlük (daily) modda\e[0m"
+    echo -e "Lütfen \e[33m$LOGROTATEFILE\e[0m dosyasındaki queue_log bloğunda \e[33mdaily\e[0m yerine \e[33mmonthly\e[0m ayarlayın."
 fi
 
 if echo "$QUEUELOG_BLOCK" | grep -q "^[[:space:]]*monthly[[:space:]]*$"; then
