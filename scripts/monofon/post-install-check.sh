@@ -1,6 +1,51 @@
 #!/usr/bin/env bash
 FREEPBXPACKAGENAME="freepbx17"
 
+# IVR modül filtreleme: --prune-ivr-modules veya PRUNE_IVR_MODULES=1 ile aktif olur.
+PRUNE_IVR_MODULES=${PRUNE_IVR_MODULES:-0}
+for arg in "$@"; do
+    case "$arg" in
+        --prune-ivr-modules)
+            PRUNE_IVR_MODULES=1
+            ;;
+    esac
+done
+
+# IVR sunucularında kalması gereken modül listesi:
+ALLOWED_IVR_MODULES=(
+    accountcodepreserve
+    arimanager
+    asterisk-cli
+    asteriskinfo
+    backup
+    builtin
+    callrecording
+    cdr
+    cel
+    certman
+    configedit
+    core
+    dashboard
+    extensionsettings
+    featurecodeadmin
+    filestore
+    framework
+    infoservices
+    logfiles
+    manager
+    music
+    outroutemsg
+    phpinfo
+    pm2
+    presencestate
+    printextensions
+    recordings
+    sipsettings
+    soundlang
+    voicemail
+    weakpasswords
+)
+
 # Sangoma repo GPG anahtarı süre dolumu (EXPKEYSIG) hatasını önlemek için apt update'ten önce güncelliyoruz.
 if ! fwconsole util updategpgkey; then
     echo "Uyarı: GPG anahtarı güncellenemedi, apt update yine de denenecek."
@@ -58,16 +103,58 @@ while true; do
     done
 done
 
-# Gereksiz görülen ek modüller de Commercial modüllerle birlikte kaldırılıyor.
-EXTRA_MODULES=(amd bulkhandler disa firewall hotelwakeup tts ttsengines ucp webrtc)
-echo "Gereksiz görülen ${#EXTRA_MODULES[@]} ek modül kaldırılıyor..."
-for module in "${EXTRA_MODULES[@]}"; do
-    if fwconsole ma uninstall "$module" 2>/dev/null; then
-        fwconsole ma remove "$module"
-    else
-        echo "Uyarı: $module zaten kurulu değil veya kaldırılamadı, atlanıyor."
+# IVR modunda atlanır (bu modülleri zaten aşağıdaki IVR bloğu kaldıracak).
+if [ "$PRUNE_IVR_MODULES" -eq 1 ]; then
+    echo "IVR modu aktif: EXTRA_MODULES adımı atlanıyor (IVR bloğu tarafından kapsanıyor)."
+else
+    # Gereksiz görülen ek modüller de Commercial modüllerle birlikte kaldırılıyor.
+    EXTRA_MODULES=(amd bulkhandler disa firewall hotelwakeup tts ttsengines ucp webrtc)
+    echo "Gereksiz görülen ${#EXTRA_MODULES[@]} ek modül kaldırılıyor..."
+    for module in "${EXTRA_MODULES[@]}"; do
+        if fwconsole ma uninstall "$module" 2>/dev/null; then
+            fwconsole ma remove "$module"
+        else
+            echo "Uyarı: $module zaten kurulu değil veya kaldırılamadı, atlanıyor."
+        fi
+    done
+fi
+
+# IVR sunucularında, izin verilen listede olmayan tüm modülleri de kaldırıyoruz.
+if [ "$PRUNE_IVR_MODULES" -eq 1 ]; then
+    echo "IVR modu aktif: ALLOWED_IVR_MODULES listesinde olmayan modüller kaldırılacak..."
+
+    mapfile -t ALL_MODULES < <(
+        fwconsole ma list 2>/dev/null \
+        | awk -F'|' 'NR>3 && $0 !~ /^\+/ { gsub(/[[:space:]]/, "", $2); print $2 }' \
+        | grep -v '^$'
+    )
+
+    IVR_FAILED_MODULES=()
+    for module in "${ALL_MODULES[@]}"; do
+        allowed=0
+        for keep in "${ALLOWED_IVR_MODULES[@]}"; do
+            if [ "$module" = "$keep" ]; then
+                allowed=1
+                break
+            fi
+        done
+        if [ "$allowed" -eq 0 ]; then
+            echo "Kaldırılıyor (IVR listesinde yok): $module"
+            if fwconsole ma uninstall "$module"; then
+                fwconsole ma remove "$module"
+            else
+                IVR_FAILED_MODULES+=("$module")
+            fi
+        fi
+    done
+
+    if [ ${#IVR_FAILED_MODULES[@]} -gt 0 ]; then
+        echo -e "\e[31mIVR modunda kaldırılamayan modüller (${#IVR_FAILED_MODULES[@]}):\e[0m"
+        for module in "${IVR_FAILED_MODULES[@]}"; do
+            echo -e "\e[31m - $module\e[0m"
+        done
     fi
-done
+fi
 
 if ! fwconsole ma upgradeall; then
     echo "Hata: Framework ve modüller güncellenemedi."
