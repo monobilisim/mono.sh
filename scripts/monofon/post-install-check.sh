@@ -154,19 +154,28 @@ if [ "$FOUND_OGG" = false ]; then
 else
     echo -e "\e[32mMIXMON_FORMAT = ogg ayarı mevcut\e[0m"
 fi
+
 LOGROTATEFILE="/etc/logrotate.d/asterisk"
 if [[ ! -f "$LOGROTATEFILE" ]]; then
-    echo -e "\e[31mError: "$LOGROTATEFILE" bulunamadı!\e[0m" >&2
+    echo -e "\e[31mError: $LOGROTATEFILE bulunamadı!\e[0m" >&2
     exit 1
 fi
 QUEUELOG_BLOCK=$(sed -n '/^\/var\/log\/asterisk\/queue_log[[:space:]]*{/,/^}/p' "$LOGROTATEFILE")
-if echo "$QUEUELOG_BLOCK" | grep -q "^[[:space:]]*daily[[:space:]]*$"; then
-    echo -e "\e[31mALERT: queue_log günlük (daily) modda\e[0m"
-    echo -e "Lütfen \e[33m$LOGROTATEFILE\e[0m dosyasındaki queue_log bloğunda \e[33mdaily\e[0m yerine \e[33mmonthly\e[0m ayarlayın."
+if [[ -z "$QUEUELOG_BLOCK" ]]; then
+    echo -e "\e[31mALERT: \e[33m$LOGROTATEFILE\e[31m içinde queue_log bloğu bulunamadı\e[0m"
+else
+    ROTATE_VALUE=$(echo "$QUEUELOG_BLOCK" | awk '/^[[:space:]]*rotate[[:space:]]+[0-9]+[[:space:]]*$/ {print $2}' | tail -n1)
+    if [[ -z "$ROTATE_VALUE" ]]; then
+        echo -e "\e[31mALERT: queue_log bloğunda rotate ayarı yok\e[0m"
+        echo -e "Lütfen \e[33m$LOGROTATEFILE\e[0m dosyasındaki queue_log bloğuna \e[33mrotate 30\e[0m satırını ekleyin (30 günlük log tutulmalı)."
+    elif (( ROTATE_VALUE != 30 )); then
+        echo -e "\e[31mALERT: queue_log rotate değeri \e[33m$ROTATE_VALUE\e[31m, olması gereken \e[33m30\e[0m"
+        echo -e "Lütfen \e[33m$LOGROTATEFILE\e[0m dosyasındaki queue_log bloğunda \e[33mrotate $ROTATE_VALUE\e[0m satırını \e[33mrotate 30\e[0m olarak güncelleyin."
+    else
+        echo -e "\e[32mOK: queue_log rotate 30 ayarlı (30 günlük log tutuluyor)\e[0m"
+    fi
 fi
-if echo "$QUEUELOG_BLOCK" | grep -q "^[[:space:]]*monthly[[:space:]]*$"; then
-    echo -e "\e[32mOK: queue_log aylık (monthly) modda\e[0m"
-fi
+
 if [ ${#FAILED_MODULES[@]} -gt 0 ]; then
     echo -e "\e[31mKaldırılamayan Commercial modüller (${#FAILED_MODULES[@]}):\e[0m"
     for module in "${FAILED_MODULES[@]}"; do
