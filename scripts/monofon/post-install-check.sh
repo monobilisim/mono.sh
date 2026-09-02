@@ -125,8 +125,7 @@ if [ "$PRUNE_IVR_MODULES" -eq 1 ]; then
 
     mapfile -t ALL_MODULES < <(
         fwconsole ma list 2>/dev/null \
-        | awk -F'|' 'NR>3 && $0 !~ /^\+/ { gsub(/[[:space:]]/, "", $2); print $2 }' \
-        | grep -v '^$'
+        | awk -F'|' '/^\+/ { sep++; next } sep>=2 { gsub(/[[:space:]]/, "", $2); if ($2 != "") print $2 }'
     )
 
     IVR_FAILED_MODULES=()
@@ -183,7 +182,7 @@ setup_swap() {
 
     local mem_kb mem_gb swap_size_gb
     mem_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
-    mem_gb=$(( mem_kb / 1024 / 1024 ))
+    mem_gb=$(( (mem_kb + 524288) / 1048576 ))
 
     if   (( mem_gb >= 2 && mem_gb < 8 )); then
         swap_size_gb=2
