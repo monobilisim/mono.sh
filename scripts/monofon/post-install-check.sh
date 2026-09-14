@@ -163,6 +163,29 @@ if [ "$PRUNE_IVR_MODULES" -eq 1 ]; then
     fi
 fi
 
+LOCAL_ONLY_FAILED=()
+mapfile -t LOCAL_ONLY_MODULES < <(
+    fwconsole ma list 2>/dev/null \
+      | awk -F'|' 'NR>3 && $4 ~ /Not Installed/ { gsub(/[[:space:]]/, "", $2); print $2 }' \
+      | grep -v '^$'
+    )
+if [ ${#LOCAL_ONLY_MODULES[@]} -gt 0 ]; then
+    echo "Kurulu olmayan ama önbellekte kalan ${#LOCAL_ONLY_MODULES[@]} modül temizleniyor..."
+    for module in "${LOCAL_ONLY_MODULES[@]}"; do
+        if fwconsole ma remove "$module" >/dev/null 2>&1; then
+            echo "Temizlendi: $module"
+        else
+            LOCAL_ONLY_FAILED+=("$module")
+        fi
+    done
+    if [ ${#LOCAL_ONLY_FAILED[@]} -gt 0 ]; then
+        echo -e "\e[31mTemizlenemeyen modüller (${#LOCAL_ONLY_FAILED[@]}):\e[0m"
+        for module in "${LOCAL_ONLY_FAILED[@]}"; do
+            echo -e "\e[31m - $module\e[0m"
+        done
+    fi
+fi
+
 if ! fwconsole ma upgradeall; then
     echo "Hata: Framework ve modüller güncellenemedi."
     echo "Lütfen önce internet bağlantısını kontrol edin."
