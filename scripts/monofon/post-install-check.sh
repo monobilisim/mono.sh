@@ -46,6 +46,16 @@ ALLOWED_IVR_MODULES=(
     weakpasswords
 )
 
+purge_module() {
+    local module="$1"
+    fwconsole ma uninstall "$module" >/dev/null 2>&1
+    if fwconsole ma remove "$module" >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 # Sangoma repo GPG anahtarı süre dolumu (EXPKEYSIG) hatasını önlemek için apt update'ten önce güncelliyoruz.
 if ! fwconsole util updategpgkey; then
     echo "Uyarı: GPG anahtarı güncellenemedi, apt update yine de denenecek."
@@ -81,7 +91,7 @@ PREVIOUS_COUNT=-1
 while true; do
     mapfile -t COMMERCIAL_MODULES < <(
         fwconsole ma list 2>/dev/null \
-          | awk -F'|' 'NR>3 && /Commercial/ { gsub(/[[:space:]]/, "", $2); print $2 }' \
+          | awk -F'|' 'NR>3 && $4 ~ /Enabled/ && $5 ~ /Commercial/ { gsub(/[[:space:]]/, "", $2); print $2 }' \
           | grep -v '^$'
         )
     if [ ${#COMMERCIAL_MODULES[@]} -eq 0 ]; then
@@ -97,9 +107,7 @@ while true; do
     PREVIOUS_COUNT=${#COMMERCIAL_MODULES[@]}
     echo "Kaldırılacak ${#COMMERCIAL_MODULES[@]} Commercial modül kaldı..."
     for module in "${COMMERCIAL_MODULES[@]}"; do
-        if fwconsole ma uninstall "$module"; then
-            fwconsole ma remove "$module"
-        fi
+        purge_module "$module"
     done
 done
 
@@ -111,8 +119,8 @@ else
     EXTRA_MODULES=(amd bulkhandler disa firewall hotelwakeup tts ttsengines ucp webrtc)
     echo "Gereksiz görülen ${#EXTRA_MODULES[@]} ek modül kaldırılıyor..."
     for module in "${EXTRA_MODULES[@]}"; do
-        if fwconsole ma uninstall "$module" 2>/dev/null; then
-            fwconsole ma remove "$module"
+        if purge_module "$module"; then
+            echo "Kaldırıldı: $module"
         else
             echo "Uyarı: $module zaten kurulu değil veya kaldırılamadı, atlanıyor."
         fi
@@ -139,8 +147,8 @@ if [ "$PRUNE_IVR_MODULES" -eq 1 ]; then
         done
         if [ "$allowed" -eq 0 ]; then
             echo "Kaldırılıyor (IVR listesinde yok): $module"
-            if fwconsole ma uninstall "$module"; then
-                fwconsole ma remove "$module"
+            if purge_module "$module"; then
+                :
             else
                 IVR_FAILED_MODULES+=("$module")
             fi
@@ -159,6 +167,10 @@ if ! fwconsole ma upgradeall; then
     echo "Hata: Framework ve modüller güncellenemedi."
     echo "Lütfen önce internet bağlantısını kontrol edin."
     exit 1
+fi
+
+if ! fwconsole chown; then
+    echo "Uyarı: fwconsole chown başarısız oldu, dosya izinlerini manuel kontrol edin."
 fi
 
 echo "Commercial modüller kaldırıldıktan sonra veritabanı eşitleniyor..."
