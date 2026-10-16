@@ -362,7 +362,7 @@ check_voice_records() {
         # alarm_check_down "recording_folder" "Folder: $recordings_path doesn't exist. Creating..."
         echo "Folder: $recordings_path doesn't exist. Creating..."
         mkdir -p "$recordings_path"
-        chown asterisk:asterisk "$recordings_path"
+        chown -R asterisk:asterisk "$recordings_path"
         if [ -d "$recordings_path" ]; then
             # alarm_check_up "recording_folder" "Successfully created folder: $recordings_path"
             echo "Successfully created folder: $recordings_path"
