@@ -298,15 +298,43 @@ function check_trunks() {
     fi
 }
 
+# Prints the part of the log written since the last call with the same name, so every line is checked exactly once.
+# Prints nothing on the first call, so old log lines don't trigger alarms.
+function read_new_log() {
+    local log_file="$1"
+    local offset_file="$TMP_PATH_SCRIPT/monofon_$2_log_offset.txt"
+    local inode size old_inode offset
+
+    [ -f "$log_file" ] || return
+
+    inode=$(stat -c %i "$log_file")
+    size=$(stat -c %s "$log_file")
+
+    if [ ! -f "$offset_file" ]; then
+        echo "$inode $size" >"$offset_file"
+        return
+    fi
+
+    read -r old_inode offset <"$offset_file"
+    # Log was rotated or truncated, read the new file from the beginning
+    if [ "$inode" != "$old_inode" ] || [ "$size" -lt "$offset" ]; then
+        offset=0
+    fi
+    echo "$inode $size" >"$offset_file"
+
+    # Stop at the size measured above, lines written meanwhile are read on the next call
+    tail -c +$((offset + 1)) "$log_file" | head -c $((size - offset))
+}
+
 function asterisk_error_check() {
-    if tail /var/log/asterisk/full | grep -q Autodestruct; then
+    if read_new_log /var/log/asterisk/full autodestruct | grep -q Autodestruct; then
         alarm "[$SCRIPT_NAME_PRETTY - $IDENTIFIER] [:red_circle:] Found \"Autodestruct\" at log: /var/log/asterisk/full"
     # else
     #     alarm_check_up "autodestruct" "No \"Autodestruct\" at log: /var/log/asterisk/full - Server: $IDENTIFIER"
     fi
 
     if [ $((10#$(date +%M) % 5)) -eq 0 ]; then
-        if tail -n 1000 /var/log/asterisk/full | grep res_rtp_asterisk.so | grep Error; then
+        if read_new_log /var/log/asterisk/full rtp | grep res_rtp_asterisk.so | grep Error; then
             alarm_check_down "module" "module alarm" # TODO alarm ekle
             asterisk -rx "module load res_pjproject.so"
             asterisk -rx "module load res_rtp_asterisk.so"
@@ -345,32 +373,13 @@ check_voice_records() {
     # the call goes on without a recording and the only trace is a "Cannot open" error in the log.
     # A "close filestream" line is only logged when the recording file was opened successfully.
     log_file="/var/log/asterisk/full"
-    offset_file="$TMP_PATH_SCRIPT/monofon_recordings_log_offset.txt"
 
     if [ ! -f "$log_file" ]; then
         print_colour "Recordings" "$log_file not found" "error"
         return
     fi
 
-    inode=$(stat -c %i "$log_file")
-    size=$(stat -c %s "$log_file")
-
-    # On the first run start from the end of the log, so old errors don't trigger an alarm
-    if [ ! -f "$offset_file" ]; then
-        echo "$inode $size" >"$offset_file"
-        print_colour "Recordings" "started watching $log_file"
-        return
-    fi
-
-    read -r old_inode offset <"$offset_file"
-    # Log was rotated or truncated, read the new file from the beginning
-    if [ "$inode" != "$old_inode" ] || [ "$size" -lt "$offset" ]; then
-        offset=0
-    fi
-    echo "$inode $size" >"$offset_file"
-
-    # Only read the part written since the last run
-    matches=$(tail -c +$((offset + 1)) "$log_file" | head -c $((size - offset)) | grep -E "app_mixmonitor.c: (Cannot open|MixMonitor close filestream)")
+    matches=$(read_new_log "$log_file" recordings | grep -E "app_mixmonitor.c: (Cannot open|MixMonitor close filestream)")
     errors=$(grep "app_mixmonitor.c: Cannot open" <<<"$matches")
 
     if [ -n "$errors" ]; then
