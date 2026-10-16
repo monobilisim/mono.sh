@@ -3,7 +3,7 @@
 
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-VERSION=v2.5.1
+VERSION=v2.6.0
 
 #shellcheck disable=SC2034
 SCRIPT_NAME="monofon-health"
@@ -341,35 +341,58 @@ function check_db() {
 
 check_voice_records() {
     echo_status "Checking Voice Recordings"
-    # Since this only runs once a day and only checks todays recordings, older alarm file stays there.
-    # So we check if any older alarm file exists and delete if it exists, since we don't need it anymore.
-    old_alarm_path="$TMP_PATH_SCRIPT/monofon_recording_folder_status.txt"
-    if [ -f "$old_alarm_path" ]; then
-        rm -rf "$old_alarm_path"
+    # When MixMonitor can't create the recording file (missing folder, wrong permissions, full disk...)
+    # the call goes on without a recording and the only trace is a "Cannot open" error in the log.
+    # A "close filestream" line is only logged when the recording file was opened successfully.
+    log_file="/var/log/asterisk/full"
+    offset_file="$TMP_PATH_SCRIPT/monofon_recordings_log_offset.txt"
+
+    if [ ! -f "$log_file" ]; then
+        print_colour "Recordings" "$log_file not found" "error"
+        return
     fi
 
-    recordings_path="/var/spool/asterisk/monitor/$(date "+%Y/%m/%d")"
-    if [ -d "$recordings_path" ]; then
-        #shellcheck disable=SC2012
-        file_count=$(ls "$recordings_path" | wc -l)
-        if [ "$file_count" -eq 0 ]; then
-            alarm "[Monofon - $IDENTIFIER] [:red_circle:] No recordings at: $recordings_path"
-            print_colour "Number of Recordings" "No Recordings found" "error"
-        else
-            print_colour "Number of Recordings" "$file_count"
+    inode=$(stat -c %i "$log_file")
+    size=$(stat -c %s "$log_file")
+
+    # On the first run start from the end of the log, so old errors don't trigger an alarm
+    if [ ! -f "$offset_file" ]; then
+        echo "$inode $size" >"$offset_file"
+        print_colour "Recordings" "started watching $log_file"
+        return
+    fi
+
+    read -r old_inode offset <"$offset_file"
+    # Log was rotated or truncated, read the new file from the beginning
+    if [ "$inode" != "$old_inode" ] || [ "$size" -lt "$offset" ]; then
+        offset=0
+    fi
+    echo "$inode $size" >"$offset_file"
+
+    # Only read the part written since the last run
+    matches=$(tail -c +$((offset + 1)) "$log_file" | head -c $((size - offset)) | grep -E "app_mixmonitor.c: (Cannot open|MixMonitor close filestream)")
+    errors=$(grep "app_mixmonitor.c: Cannot open" <<<"$matches")
+
+    if [ -n "$errors" ]; then
+        # Each log line is read only once, so every failed call is reported exactly once.
+        # All failures since the last run go into a single message to avoid flooding the channel.
+        error_count=$(wc -l <<<"$errors")
+        message="[$SCRIPT_NAME_PRETTY - $IDENTIFIER] [:red_circle:] $error_count call(s) couldn't be recorded:"
+        while read -r line; do
+            message="$message\n${line%% ERROR*} ${line##*Cannot open }"
+        done < <(head -n 10 <<<"$errors")
+        if [ "$error_count" -gt 10 ]; then
+            message="$message\n... and $((error_count - 10)) more in $log_file"
         fi
+        print_colour "Recordings" "$error_count failed" "error"
+        alarm "$message"
+        # Mark recordings as down so alarm_check_up sends a recovery message once recordings work again
+        date "+%Y-%m-%d %H:%M" >"$TMP_PATH_SCRIPT/recordings_status.txt"
+    elif grep -q "MixMonitor close filestream" <<<"$matches"; then
+        print_colour "Recordings" "ok"
+        alarm_check_up "recordings" "Voice recordings are being written again"
     else
-        # alarm_check_down "recording_folder" "Folder: $recordings_path doesn't exist. Creating..."
-        echo "Folder: $recordings_path doesn't exist. Creating..."
-        mkdir -p "$recordings_path"
-        chown -R asterisk:asterisk "$recordings_path"
-        if [ -d "$recordings_path" ]; then
-            # alarm_check_up "recording_folder" "Successfully created folder: $recordings_path"
-            echo "Successfully created folder: $recordings_path"
-        else
-            alarm "[Monofon - $IDENTIFIER] [:red_circle:] Couldn't create folder: $recordings_path"
-            echo "Couldn't create folder: $recordings_path"
-        fi
+        print_colour "Recordings" "no new recordings"
     fi
 }
 
@@ -454,7 +477,7 @@ function main() {
         check_db
     fi
     asterisk_error_check
-    if [ "$(date "+%H:%M")" == "12:00" ] && echo "$IDENTIFIER" | grep sip >/dev/null; then
+    if echo "$IDENTIFIER" | grep sip >/dev/null; then
         if ! containsElement "recordings" "${IGNORED_SERVICES[@]}"; then
             check_voice_records
         fi
